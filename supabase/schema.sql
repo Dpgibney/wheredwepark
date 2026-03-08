@@ -111,6 +111,11 @@ create policy "Users can view own profile"
   on profiles for select
   using (auth.uid() = id);
 
+-- Allows searching for other users by email when sharing a vehicle
+create policy "Authenticated users can search profiles"
+  on profiles for select
+  using (auth.uid() is not null);
+
 create policy "Users can update own profile"
   on profiles for update
   using (auth.uid() = id);

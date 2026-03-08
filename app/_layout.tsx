@@ -67,6 +67,14 @@ export default function RootLayout() {
             title: '',
           }}
         />
+        <Stack.Screen
+          name="car/[id]/share"
+          options={{
+            headerShown: true,
+            headerTintColor: '#2563EB',
+            title: 'Manage Sharing',
+          }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </>
