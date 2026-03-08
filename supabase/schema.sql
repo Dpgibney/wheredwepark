@@ -41,6 +41,7 @@ create table car_shares (
   id                   uuid primary key default gen_random_uuid(),
   car_id               uuid references cars(id) on delete cascade not null,
   shared_with_user_id  uuid references profiles(id) on delete cascade not null,
+  status               text not null default 'pending' check (status in ('pending', 'accepted')),
   created_at           timestamptz default now() not null,
   unique(car_id, shared_with_user_id)
 );
@@ -87,9 +88,13 @@ security definer
 stable
 as $$
   select exists (
-    select 1 from cars      where id = p_car_id and owner_id = auth.uid()
+    select 1 from cars
+      where id = p_car_id and owner_id = auth.uid()
     union all
-    select 1 from car_shares where car_id = p_car_id and shared_with_user_id = auth.uid()
+    select 1 from car_shares
+      where car_id = p_car_id
+        and shared_with_user_id = auth.uid()
+        and status = 'accepted'
   );
 $$;
 
@@ -146,6 +151,26 @@ create policy "Users can view accessible cars"
   on cars for select
   using (user_has_car_access(id));
 
+-- Returns true if the current user has any share (pending or accepted) for the car
+-- Used to allow pending invite recipients to see car name/type in invite cards
+create or replace function user_has_pending_invite(p_car_id uuid)
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from car_shares
+    where car_id = p_car_id
+      and shared_with_user_id = auth.uid()
+  );
+$$;
+
+-- Allows pending invite recipients to see car name/type in their invite card
+create policy "Users can view cars with pending invites"
+  on cars for select
+  using (user_has_pending_invite(id));
+
 create policy "Owners can insert cars"
   on cars for insert
   with check (auth.uid() = owner_id);
@@ -181,6 +206,11 @@ create policy "Owners can delete shares"
 create policy "Shared users can remove themselves"
   on car_shares for delete
   using (auth.uid() = shared_with_user_id);
+
+create policy "Recipients can update share status"
+  on car_shares for update
+  using (auth.uid() = shared_with_user_id)
+  with check (auth.uid() = shared_with_user_id);
 
 -- parking_locations
 create policy "Users with access can view parking locations"

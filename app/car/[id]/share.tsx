@@ -17,10 +17,11 @@ import { supabase } from '@/lib/supabase';
 type Share = {
   id: string;
   shared_with_user_id: string;
+  status: 'pending' | 'accepted';
   profiles: {
     display_name: string | null;
     email: string;
-  }[];
+  } | null;
 };
 
 export default function ShareScreen() {
@@ -40,7 +41,7 @@ export default function ShareScreen() {
   async function fetchShares() {
     const { data, error } = await supabase
       .from('car_shares')
-      .select('id, shared_with_user_id, profiles(display_name, email)')
+      .select('id, shared_with_user_id, status, profiles(display_name, email)')
       .eq('car_id', carId)
       .order('created_at', { ascending: true });
 
@@ -56,51 +57,52 @@ export default function ShareScreen() {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed) return;
 
-    // Look up the user by email
     const { data: profile, error: lookupError } = await supabase
       .from('profiles')
       .select('id, display_name, email')
       .eq('email', trimmed)
       .single();
 
-    // If no account exists we silently succeed to avoid revealing registered emails
     if (lookupError || !profile || profile.id === userId) {
       setEmail('');
-      Alert.alert('Invite Sent', 'Vehicle shared with that user if they have an account.');
+      Alert.alert('Invite Sent', 'An invite has been sent to that user if they have an account.');
       return;
     }
 
     const alreadyShared = shares.some(s => s.shared_with_user_id === profile.id);
     if (alreadyShared) {
-      Alert.alert('Already Shared', 'This vehicle is already shared with that user.');
+      Alert.alert('Already Invited', 'This vehicle has already been shared with that user.');
       return;
     }
 
     setAdding(true);
     const { error } = await supabase
       .from('car_shares')
-      .insert({ car_id: carId, shared_with_user_id: profile.id });
+      .insert({ car_id: carId, shared_with_user_id: profile.id, status: 'pending' });
     setAdding(false);
 
     if (error) {
       Alert.alert('Error', error.message);
     } else {
       setEmail('');
-      Alert.alert('Invite Sent', 'Vehicle shared with that user if they have an account.');
+      Alert.alert('Invite Sent', 'An invite has been sent to that user if they have an account.');
       fetchShares();
     }
   }
 
   async function handleRemove(share: Share) {
-    const profile = share.profiles?.[0];
+    const profile = share.profiles;
     const name = profile?.display_name ?? profile?.email ?? 'this user';
+    const isPending = share.status === 'pending';
     Alert.alert(
-      'Remove Access',
-      `Remove ${name}'s access to this vehicle?`,
+      isPending ? 'Cancel Invite' : 'Remove Access',
+      isPending
+        ? `Cancel the invite for ${name}?`
+        : `Remove ${name}'s access to this vehicle?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Remove',
+          text: isPending ? 'Cancel Invite' : 'Remove',
           style: 'destructive',
           onPress: async () => {
             const { error } = await supabase
@@ -118,6 +120,9 @@ export default function ShareScreen() {
     );
   }
 
+  const pendingShares = shares.filter(s => s.status === 'pending');
+  const acceptedShares = shares.filter(s => s.status === 'accepted');
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -125,7 +130,7 @@ export default function ShareScreen() {
     >
       {/* Add by email */}
       <View style={styles.addSection}>
-        <Text style={styles.sectionTitle}>Add Person</Text>
+        <Text style={styles.sectionTitle}>Send Invite</Text>
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -145,47 +150,72 @@ export default function ShareScreen() {
           >
             {adding
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.addButtonText}>Add</Text>
+              : <Text style={styles.addButtonText}>Send</Text>
             }
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Current shares */}
-      <View style={styles.listSection}>
-        <Text style={styles.sectionTitle}>
-          {shares.length > 0 ? 'Shared With' : 'Not shared with anyone yet'}
-        </Text>
+      {loading
+        ? <ActivityIndicator color="#2563EB" style={{ marginTop: 24 }} />
+        : (
+          <FlatList
+            data={[...pendingShares, ...acceptedShares]}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContent}
+            ListHeaderComponent={
+              <>
+                {pendingShares.length > 0 && (
+                  <Text style={styles.sectionTitle}>Pending</Text>
+                )}
+              </>
+            }
+            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            renderItem={({ item, index }) => {
+              const profile = item.profiles;
+              const isPending = item.status === 'pending';
+              const showAcceptedHeader =
+                index === pendingShares.length && acceptedShares.length > 0;
 
-        {loading
-          ? <ActivityIndicator color="#2563EB" style={{ marginTop: 16 }} />
-          : (
-            <FlatList
-              data={shares}
-              keyExtractor={item => item.id}
-              contentContainerStyle={{ gap: 8 }}
-              renderItem={({ item }) => (
-                <View style={styles.shareRow}>
-                  <View style={styles.shareInfo}>
-                    <Text style={styles.shareName}>
-                      {item.profiles?.[0]?.display_name ?? '—'}
+              return (
+                <>
+                  {showAcceptedHeader && (
+                    <Text style={[styles.sectionTitle, { marginTop: pendingShares.length > 0 ? 20 : 0 }]}>
+                      Has Access
                     </Text>
-                    <Text style={styles.shareEmail}>
-                      {item.profiles?.[0]?.email}
-                    </Text>
+                  )}
+                  <View style={[styles.shareRow, isPending && styles.shareRowPending]}>
+                    <View style={styles.shareInfo}>
+                      <View style={styles.nameRow}>
+                        <Text style={styles.shareName}>
+                          {profile?.display_name ?? '—'}
+                        </Text>
+                        {isPending && (
+                          <View style={styles.pendingBadge}>
+                            <Text style={styles.pendingBadgeText}>Pending</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.shareEmail}>{profile?.email}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleRemove(item)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Text style={styles.removeText}>
+                        {isPending ? 'Cancel' : 'Remove'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => handleRemove(item)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Text style={styles.removeText}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            />
-          )
-        }
-      </View>
+                </>
+              );
+            }}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>No invites sent yet.</Text>
+            }
+          />
+        )
+      }
     </KeyboardAvoidingView>
   );
 }
@@ -201,8 +231,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  listSection: {
-    flex: 1,
+  listContent: {
     padding: 20,
   },
   sectionTitle: {
@@ -255,14 +284,35 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+  shareRowPending: {
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+  },
   shareInfo: {
     flex: 1,
     gap: 2,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   shareName: {
     fontSize: 15,
     fontWeight: '600',
     color: '#111827',
+  },
+  pendingBadge: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  pendingBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400E',
   },
   shareEmail: {
     fontSize: 13,
@@ -272,5 +322,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#DC2626',
     fontWeight: '500',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
