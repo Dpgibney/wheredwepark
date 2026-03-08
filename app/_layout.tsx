@@ -40,7 +40,7 @@ export default function RootLayout() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#2563EB" />
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
       </View>
     );
   }
@@ -65,6 +65,7 @@ export default function RootLayout() {
             headerShown: true,
             headerTintColor: '#2563EB',
             title: '',
+            headerBackTitle: 'Cars',
           }}
         />
         <Stack.Screen
@@ -76,7 +77,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="dark" />
     </>
   );
 }

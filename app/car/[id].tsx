@@ -237,12 +237,9 @@ export default function CarDetailScreen() {
       </MapView>
 
       <ScrollView style={styles.card} contentContainerStyle={styles.cardContent}>
-        <View style={styles.carHeader}>
-          <Text style={styles.carName}>{car.name}</Text>
-          {car.license_plate && (
-            <Text style={styles.plate}>{car.license_plate}</Text>
-          )}
-        </View>
+        {car.license_plate && (
+          <Text style={styles.plate}>License plate: {car.license_plate}</Text>
+        )}
 
         {loc ? (
           <View style={styles.locationInfo}>
