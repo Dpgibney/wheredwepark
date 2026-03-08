@@ -1,0 +1,25 @@
+import { Text, TouchableOpacity } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+
+export default function TabLayout() {
+  const router = useRouter();
+
+  return (
+    <Tabs screenOptions={{ tabBarActiveTintColor: '#2563EB' }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'My Cars',
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => router.push('/add-car')}
+              style={{ marginRight: 16 }}
+            >
+              <Text style={{ fontSize: 28, color: '#2563EB', lineHeight: 32 }}>+</Text>
+            </TouchableOpacity>
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
