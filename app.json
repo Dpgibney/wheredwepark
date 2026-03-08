@@ -43,7 +43,14 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Used to attach a photo to your parking location.",
+          "cameraPermission": "Used to take a photo of your parking location."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

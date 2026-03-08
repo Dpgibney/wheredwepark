@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   View,
   Text,
+  Image,
+  Modal,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -11,6 +13,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 
 type CarDetail = {
@@ -22,6 +25,7 @@ type CarDetail = {
     latitude: number;
     longitude: number;
     updated_at: string;
+    image_path: string | null;
     profiles: { display_name: string | null } | null;
   } | null;
 };
@@ -34,7 +38,10 @@ export default function CarDetailScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingLocation, setSavingLocation] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [userRegion, setUserRegion] = useState<Region | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageFullscreen, setImageFullscreen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
@@ -57,15 +64,29 @@ export default function CarDetailScreen() {
   async function fetchCar() {
     const { data, error } = await supabase
       .from('cars')
-      .select('id, name, license_plate, owner_id, parking_locations(latitude, longitude, updated_at, profiles(display_name))')
+      .select('id, name, license_plate, owner_id, parking_locations(latitude, longitude, updated_at, image_path, profiles(display_name))')
       .eq('id', id)
       .single();
 
     if (error) {
       Alert.alert('Error', error.message);
-    } else {
-      setCar(data as CarDetail);
+      setLoading(false);
+      return;
     }
+
+    setCar(data as CarDetail);
+
+    // Generate a signed URL for the parking image (valid 1 hour)
+    const imagePath = (data as CarDetail).parking_locations?.image_path;
+    if (imagePath) {
+      const { data: signed } = await supabase.storage
+        .from('parking-images')
+        .createSignedUrl(imagePath, 3600);
+      setImageUrl(signed?.signedUrl ?? null);
+    } else {
+      setImageUrl(null);
+    }
+
     setLoading(false);
   }
 
@@ -78,9 +99,7 @@ export default function CarDetailScreen() {
 
     setSavingLocation(true);
     try {
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
 
       const { error } = await supabase.from('parking_locations').upsert(
         {
@@ -96,7 +115,7 @@ export default function CarDetailScreen() {
       if (error) {
         Alert.alert('Error', error.message);
       } else {
-        await fetchCar(); // refresh to show updated location on map
+        await fetchCar();
       }
     } catch {
       Alert.alert('Error', 'Could not get your current location. Make sure Location Services are enabled.');
@@ -105,9 +124,75 @@ export default function CarDetailScreen() {
     }
   }
 
+  async function handlePickImage() {
+    Alert.alert('Add Photo', 'Choose a source', [
+      {
+        text: 'Camera',
+        onPress: () => launchPicker('camera'),
+      },
+      {
+        text: 'Photo Library',
+        onPress: () => launchPicker('library'),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  async function launchPicker(source: 'camera' | 'library') {
+    let result: ImagePicker.ImagePickerResult;
+
+    if (source === 'camera') {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Camera access is required to take a photo.');
+        return;
+      }
+      result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 });
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Photo library access is required.');
+        return;
+      }
+      result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, quality: 0.7 });
+    }
+
+    if (result.canceled) return;
+    await uploadImage(result.assets[0].uri);
+  }
+
+  async function uploadImage(uri: string) {
+    setUploadingImage(true);
+    try {
+      const response = await fetch(uri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      // Path: {car_id}/parking.jpg — one file per car, upsert replaces it
+      const path = `${id}/parking.jpg`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('parking-images')
+        .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { error: dbError } = await supabase
+        .from('parking_locations')
+        .update({ image_path: path })
+        .eq('car_id', id);
+
+      if (dbError) throw dbError;
+
+      await fetchCar();
+    } catch (e: any) {
+      Alert.alert('Upload Failed', e?.message ?? 'Could not upload the photo.');
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   function formatDate(dateStr: string) {
-    const date = new Date(dateStr);
-    return date.toLocaleString(undefined, {
+    return new Date(dateStr).toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -139,10 +224,8 @@ export default function CarDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Dynamically set the header title */}
       <Stack.Screen options={{ title: car.name }} />
 
-      {/* Map */}
       <MapView style={styles.map} region={mapRegion} showsUserLocation>
         {loc && (
           <Marker
@@ -153,7 +236,6 @@ export default function CarDetailScreen() {
         )}
       </MapView>
 
-      {/* Bottom info card */}
       <ScrollView style={styles.card} contentContainerStyle={styles.cardContent}>
         <View style={styles.carHeader}>
           <Text style={styles.carName}>{car.name}</Text>
@@ -171,8 +253,40 @@ export default function CarDetailScreen() {
             )}
           </View>
         ) : (
-          <View style={styles.locationInfo}>
-            <Text style={styles.noLocation}>No parking location saved yet.</Text>
+          <Text style={styles.noLocation}>No parking location saved yet.</Text>
+        )}
+
+        {/* Photo section — only shown once a location exists */}
+        {loc && (
+          <View style={styles.photoSection}>
+            {imageUrl ? (
+              <>
+                <TouchableOpacity onPress={() => setImageFullscreen(true)} activeOpacity={0.9}>
+                  <Image source={{ uri: imageUrl }} style={styles.parkingImage} resizeMode="cover" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.photoButton}
+                  onPress={handlePickImage}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage
+                    ? <ActivityIndicator color="#2563EB" size="small" />
+                    : <Text style={styles.photoButtonText}>Change Photo</Text>
+                  }
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={[styles.addPhotoButton, uploadingImage && styles.buttonDisabled]}
+                onPress={handlePickImage}
+                disabled={uploadingImage}
+              >
+                {uploadingImage
+                  ? <ActivityIndicator color="#6B7280" size="small" />
+                  : <Text style={styles.addPhotoText}>+ Add Parking Photo</Text>
+                }
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -198,6 +312,16 @@ export default function CarDetailScreen() {
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      <Modal visible={imageFullscreen} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.fullscreenBackdrop}
+          activeOpacity={1}
+          onPress={() => setImageFullscreen(false)}
+        >
+          <Image source={{ uri: imageUrl! }} style={styles.fullscreenImage} resizeMode="contain" />
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -219,7 +343,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 8,
-    maxHeight: '45%',
+    maxHeight: '50%',
   },
   cardContent: {
     padding: 24,
@@ -262,6 +386,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
   },
+  photoSection: {
+    gap: 8,
+  },
+  parkingImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+  },
+  photoButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+  },
+  photoButtonText: {
+    color: '#2563EB',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  addPhotoButton: {
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  addPhotoText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   button: {
     backgroundColor: '#2563EB',
     borderRadius: 10,
@@ -294,5 +449,15 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  fullscreenBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '100%',
   },
 });
