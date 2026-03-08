@@ -33,7 +33,7 @@ type Car = {
   license_plate: string | null;
   owner_id: string;
   vehicle_type: VehicleType;
-  parking_locations: ParkingLocation[];
+  parking_locations: ParkingLocation | null;
 };
 
 type PendingInvite = {
@@ -65,6 +65,9 @@ export default function HomeScreen() {
   }
 
   async function fetchCars() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const { data, error } = await supabase
       .from('cars')
       .select('id, name, license_plate, owner_id, vehicle_type, parking_locations(latitude, longitude, updated_at)')
@@ -224,7 +227,7 @@ export default function HomeScreen() {
       }
       renderItem={({ item }) => {
         const isOwner = item.owner_id === userId;
-        const loc = item.parking_locations?.[0] ?? null;
+        const loc = item.parking_locations ?? null;
         return (
           <TouchableOpacity
             style={styles.card}
