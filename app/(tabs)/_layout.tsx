@@ -1,5 +1,6 @@
 import { Text, TouchableOpacity } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const router = useRouter();
@@ -9,7 +10,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'My Cars',
+          title: 'My Vehicles',
+          tabBarIcon: ({ color, size }) => <Ionicons name="car" size={size} color={color} />,
           headerRight: () => (
             <TouchableOpacity
               onPress={() => router.push('/add-car')}
@@ -22,7 +24,10 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings' }}
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+        }}
       />
     </Tabs>
   );

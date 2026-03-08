@@ -7,14 +7,15 @@
 -- SCHEMA PERMISSIONS (required for PostgreSQL 15+ / new Supabase projects)
 -- ------------------------------------------------------------
 
-grant usage on schema public to anon, authenticated;
-grant all on all tables in schema public to anon, authenticated;
-grant all on all sequences in schema public to anon, authenticated;
+-- authenticated role gets full access; anon gets none (all app actions require auth)
+grant usage on schema public to authenticated;
+grant all on all tables in schema public to authenticated;
+grant all on all sequences in schema public to authenticated;
 
 alter default privileges in schema public
-  grant all on tables to anon, authenticated;
+  grant all on tables to authenticated;
 alter default privileges in schema public
-  grant all on sequences to anon, authenticated;
+  grant all on sequences to authenticated;
 
 -- ------------------------------------------------------------
 -- TABLES
@@ -23,15 +24,16 @@ alter default privileges in schema public
 create table profiles (
   id            uuid references auth.users on delete cascade primary key,
   email         text not null,
-  display_name  text,
+  display_name  text check (char_length(display_name) <= 100),
   created_at    timestamptz default now() not null
 );
 
 create table cars (
   id            uuid primary key default gen_random_uuid(),
   owner_id      uuid references profiles(id) on delete cascade not null,
-  name          text not null,
-  license_plate text,
+  name          text not null check (char_length(name) <= 100),
+  license_plate text check (char_length(license_plate) <= 20),
+  vehicle_type  text not null default 'car' check (vehicle_type in ('car', 'bike', 'motorcycle')),
   created_at    timestamptz default now() not null
 );
 
@@ -51,8 +53,27 @@ create table parking_locations (
   longitude           double precision not null,
   updated_by_user_id  uuid references profiles(id) not null,
   updated_at          timestamptz default now() not null,
-  notes               text
+  notes               text,
+  image_path          text
 );
+
+-- ------------------------------------------------------------
+-- TRIGGER: enforce 10-car limit per user
+-- ------------------------------------------------------------
+
+create or replace function check_car_limit()
+returns trigger language plpgsql as $$
+begin
+  if (select count(*) from cars where owner_id = new.owner_id) >= 10 then
+    raise exception 'Car limit reached. A user may only add up to 10 vehicles.';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger enforce_car_limit
+  before insert on cars
+  for each row execute procedure check_car_limit();
 
 -- ------------------------------------------------------------
 -- HELPER FUNCTION (used in RLS policies)
@@ -157,6 +178,10 @@ create policy "Owners can delete shares"
     exists (select 1 from cars where id = car_id and owner_id = auth.uid())
   );
 
+create policy "Shared users can remove themselves"
+  on car_shares for delete
+  using (auth.uid() = shared_with_user_id);
+
 -- parking_locations
 create policy "Users with access can view parking locations"
   on parking_locations for select
@@ -173,3 +198,32 @@ create policy "Users with access can update parking locations"
   on parking_locations for update
   using (user_has_car_access(car_id))
   with check (auth.uid() = updated_by_user_id);
+
+-- ------------------------------------------------------------
+-- STORAGE: parking photos (private bucket, one image per car)
+-- Depends on user_has_car_access — must come after helper function
+-- ------------------------------------------------------------
+
+insert into storage.buckets (id, name, public)
+values ('parking-images', 'parking-images', false)
+on conflict (id) do nothing;
+
+create policy "Users with car access can view parking images"
+  on storage.objects for select
+  using (bucket_id = 'parking-images'
+    and user_has_car_access((storage.foldername(name))[1]::uuid));
+
+create policy "Users with car access can upload parking images"
+  on storage.objects for insert
+  with check (bucket_id = 'parking-images'
+    and user_has_car_access((storage.foldername(name))[1]::uuid));
+
+create policy "Users with car access can update parking images"
+  on storage.objects for update
+  using (bucket_id = 'parking-images'
+    and user_has_car_access((storage.foldername(name))[1]::uuid));
+
+create policy "Users with car access can delete parking images"
+  on storage.objects for delete
+  using (bucket_id = 'parking-images'
+    and user_has_car_access((storage.foldername(name))[1]::uuid));

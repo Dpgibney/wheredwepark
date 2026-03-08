@@ -65,7 +65,7 @@ export default function RootLayout() {
             headerShown: true,
             headerTintColor: '#2563EB',
             title: '',
-            headerBackTitle: 'Cars',
+            headerBackTitle: 'Vehicles',
           }}
         />
         <Stack.Screen

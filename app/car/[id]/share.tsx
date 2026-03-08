@@ -20,7 +20,7 @@ type Share = {
   profiles: {
     display_name: string | null;
     email: string;
-  } | null;
+  }[];
 };
 
 export default function ShareScreen() {
@@ -47,7 +47,7 @@ export default function ShareScreen() {
     if (error) {
       Alert.alert('Error', error.message);
     } else {
-      setShares((data ?? []) as Share[]);
+      setShares(data ?? []);
     }
     setLoading(false);
   }
@@ -92,7 +92,8 @@ export default function ShareScreen() {
   }
 
   async function handleRemove(share: Share) {
-    const name = share.profiles?.display_name ?? share.profiles?.email ?? 'this user';
+    const profile = share.profiles?.[0];
+    const name = profile?.display_name ?? profile?.email ?? 'this user';
     Alert.alert(
       'Remove Access',
       `Remove ${name}'s access to this vehicle?`,
@@ -167,10 +168,10 @@ export default function ShareScreen() {
                 <View style={styles.shareRow}>
                   <View style={styles.shareInfo}>
                     <Text style={styles.shareName}>
-                      {item.profiles?.display_name ?? '—'}
+                      {item.profiles?.[0]?.display_name ?? '—'}
                     </Text>
                     <Text style={styles.shareEmail}>
-                      {item.profiles?.email}
+                      {item.profiles?.[0]?.email}
                     </Text>
                   </View>
                   <TouchableOpacity

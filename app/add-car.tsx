@@ -13,9 +13,18 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 
+type VehicleType = 'car' | 'bike' | 'motorcycle';
+
+const VEHICLE_TYPES: { type: VehicleType; label: string; emoji: string }[] = [
+  { type: 'car',        label: 'Car',        emoji: '🚗' },
+  { type: 'bike',       label: 'Bike',       emoji: '🚲' },
+  { type: 'motorcycle', label: 'Motorcycle', emoji: '🏍️' },
+];
+
 export default function AddCarScreen() {
   const [name, setName] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
+  const [vehicleType, setVehicleType] = useState<VehicleType>('car');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -24,15 +33,35 @@ export default function AddCarScreen() {
       Alert.alert('Required', 'Please enter a vehicle name.');
       return;
     }
+    if (name.trim().length > 100) {
+      Alert.alert('Too Long', 'Vehicle name must be 100 characters or fewer.');
+      return;
+    }
+    if (licensePlate.trim().length > 20) {
+      Alert.alert('Too Long', 'License plate must be 20 characters or fewer.');
+      return;
+    }
 
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const { count } = await supabase
+      .from('cars')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', user.id);
+
+    if ((count ?? 0) >= 10) {
+      setLoading(false);
+      Alert.alert('Limit Reached', 'You can only add up to 10 vehicles.');
+      return;
+    }
+
     const { error } = await supabase.from('cars').insert({
       owner_id: user.id,
       name: name.trim(),
       license_plate: licensePlate.trim() || null,
+      vehicle_type: vehicleType,
     });
 
     setLoading(false);
@@ -50,6 +79,25 @@ export default function AddCarScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.inner}>
+        <Text style={styles.label}>Vehicle Type *</Text>
+        <View style={styles.typeRow}>
+          {VEHICLE_TYPES.map(({ type, label, emoji }) => {
+            const selected = vehicleType === type;
+            return (
+              <TouchableOpacity
+                key={type}
+                style={[styles.typeButton, selected && styles.typeButtonSelected]}
+                onPress={() => setVehicleType(type)}
+              >
+                <Text style={styles.typeEmoji}>{emoji}</Text>
+                <Text style={[styles.typeLabel, selected && styles.typeLabelSelected]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <Text style={styles.label}>Vehicle Name *</Text>
         <TextInput
           style={styles.input}
@@ -102,6 +150,37 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginBottom: 6,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  typeButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#fff',
+    gap: 4,
+  },
+  typeButtonSelected: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+  },
+  typeEmoji: {
+    fontSize: 24,
+  },
+  typeLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  typeLabelSelected: {
+    color: '#2563EB',
+    fontWeight: '600',
   },
   input: {
     backgroundColor: '#fff',

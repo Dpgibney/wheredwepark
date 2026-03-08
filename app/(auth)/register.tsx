@@ -25,6 +25,10 @@ export default function RegisterScreen() {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
+    if (displayName.length > 100) {
+      Alert.alert('Error', 'Display name must be 100 characters or fewer.');
+      return;
+    }
     if (password.length < 6) {
       Alert.alert('Error', 'Password must be at least 6 characters.');
       return;

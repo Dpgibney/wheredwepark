@@ -13,16 +13,27 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '@/lib/supabase';
 
+type ParkingLocation = {
+  latitude: number;
+  longitude: number;
+  updated_at: string;
+};
+
+type VehicleType = 'car' | 'bike' | 'motorcycle';
+
+const VEHICLE_EMOJI: Record<VehicleType, string> = {
+  car: '🚗',
+  bike: '🚲',
+  motorcycle: '🏍️',
+};
+
 type Car = {
   id: string;
   name: string;
   license_plate: string | null;
   owner_id: string;
-  parking_locations: {
-    latitude: number;
-    longitude: number;
-    updated_at: string;
-  } | null;
+  vehicle_type: VehicleType;
+  parking_locations: ParkingLocation[];
 };
 
 export default function HomeScreen() {
@@ -41,13 +52,13 @@ export default function HomeScreen() {
   async function fetchCars() {
     const { data, error } = await supabase
       .from('cars')
-      .select('id, name, license_plate, owner_id, parking_locations(latitude, longitude, updated_at)')
+      .select('id, name, license_plate, owner_id, vehicle_type, parking_locations(latitude, longitude, updated_at)')
       .order('created_at', { ascending: false });
 
     if (error) {
       Alert.alert('Error', error.message);
     } else {
-      setCars((data ?? []) as Car[]);
+      setCars(data ?? []);
     }
   }
 
@@ -121,7 +132,7 @@ export default function HomeScreen() {
       }
       renderItem={({ item }) => {
         const isOwner = item.owner_id === userId;
-        const loc = item.parking_locations;
+        const loc = item.parking_locations?.[0] ?? null;
         return (
           <TouchableOpacity
             style={styles.card}
@@ -129,7 +140,9 @@ export default function HomeScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.cardLeft}>
-              <Text style={styles.carName}>{item.name}</Text>
+              <Text style={styles.carName}>
+                {VEHICLE_EMOJI[item.vehicle_type] ?? '🚗'} {item.name}
+              </Text>
               {item.license_plate && (
                 <Text style={styles.plate}>{item.license_plate}</Text>
               )}

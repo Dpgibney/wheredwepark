@@ -124,6 +124,39 @@ export default function CarDetailScreen() {
     }
   }
 
+  async function handleLeaveVehicle() {
+    Alert.alert(
+      'Leave Vehicle',
+      `Remove yourself from ${car?.name ?? 'this vehicle'}? You will lose access.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            // Get user fresh to avoid relying on potentially-null state
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { error, count } = await supabase
+              .from('car_shares')
+              .delete({ count: 'exact' })
+              .eq('car_id', id)
+              .eq('shared_with_user_id', user.id);
+
+            if (error) {
+              Alert.alert('Error', error.message);
+            } else if (!count || count === 0) {
+              Alert.alert('Error', 'Could not remove access. Make sure the required database policy has been applied.');
+            } else {
+              router.replace('/(tabs)');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   async function handlePickImage() {
     Alert.alert('Add Photo', 'Choose a source', [
       {
@@ -300,12 +333,19 @@ export default function CarDetailScreen() {
           }
         </TouchableOpacity>
 
-        {isOwner && (
+        {isOwner ? (
           <TouchableOpacity
             style={styles.shareButton}
             onPress={() => router.push(`/car/${id}/share`)}
           >
             <Text style={styles.shareButtonText}>Manage Sharing</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.shareButton}
+            onPress={handleLeaveVehicle}
+          >
+            <Text style={styles.leaveButtonText}>Leave Vehicle</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -434,6 +474,11 @@ const styles = StyleSheet.create({
   },
   shareButtonText: {
     color: '#2563EB',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  leaveButtonText: {
+    color: '#DC2626',
     fontSize: 15,
     fontWeight: '500',
   },

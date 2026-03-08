@@ -34,9 +34,9 @@ export interface Database {
         Update: { display_name?: string | null };
       };
       cars: {
-        Row: { id: string; owner_id: string; name: string; license_plate: string | null; created_at: string };
-        Insert: { owner_id: string; name: string; license_plate?: string | null };
-        Update: { name?: string; license_plate?: string | null };
+        Row: { id: string; owner_id: string; name: string; license_plate: string | null; vehicle_type: 'car' | 'bike' | 'motorcycle'; created_at: string };
+        Insert: { owner_id: string; name: string; license_plate?: string | null; vehicle_type?: 'car' | 'bike' | 'motorcycle' };
+        Update: { name?: string; license_plate?: string | null; vehicle_type?: 'car' | 'bike' | 'motorcycle' };
       };
       car_shares: {
         Row: { id: string; car_id: string; shared_with_user_id: string; created_at: string };
