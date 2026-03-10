@@ -9,6 +9,9 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Share,
+  Platform,
+  Linking,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Marker, Region } from 'react-native-maps';
@@ -74,10 +77,10 @@ export default function CarDetailScreen() {
       return;
     }
 
-    setCar(data as CarDetail);
+    setCar(data as unknown as CarDetail);
 
     // Generate a signed URL for the parking image (valid 1 hour)
-    const imagePath = (data as CarDetail).parking_locations?.image_path;
+    const imagePath = (data as unknown as CarDetail).parking_locations?.image_path;
     if (imagePath) {
       const { data: signed } = await supabase.storage
         .from('parking-images')
@@ -224,6 +227,60 @@ export default function CarDetailScreen() {
     }
   }
 
+  async function handleDirections() {
+    if (!loc) return;
+    const { latitude, longitude } = loc;
+
+    if (Platform.OS === 'android') {
+      try {
+        await Linking.openURL(`geo:${latitude},${longitude}?q=${latitude},${longitude}`);
+      } catch {
+        Alert.alert('Error', 'Could not open a maps app.');
+      }
+      return;
+    }
+
+    // iOS: detect installed map apps and offer a choice
+    const candidates = [
+      { text: 'Apple Maps', url: `maps://?daddr=${latitude},${longitude}` },
+      { text: 'Google Maps', url: `comgooglemaps://?daddr=${latitude},${longitude}&directionsmode=driving` },
+      { text: 'Waze', url: `waze://?ll=${latitude},${longitude}&navigate=yes` },
+    ];
+
+    const available: { text: string; url: string }[] = [];
+    for (const app of candidates) {
+      if (await Linking.canOpenURL(app.url)) available.push(app);
+    }
+    // Web fallback always works
+    available.push({ text: 'Google Maps (Web)', url: `https://maps.google.com/?daddr=${latitude},${longitude}` });
+
+    const openMap = async (url: string) => {
+      try {
+        await Linking.openURL(url);
+      } catch {
+        Alert.alert('Error', 'Could not open that maps app.');
+      }
+    };
+
+    Alert.alert(
+      'Get Directions',
+      'Open in:',
+      [
+        ...available.map(app => ({ text: app.text, onPress: () => openMap(app.url) })),
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  }
+
+  async function handleShareShortcut() {
+    const link = `wheredwepark://car/${id}`;
+    await Share.share(
+      Platform.OS === 'ios'
+        ? { url: link, title: `Open ${car?.name ?? 'vehicle'} in Where'd We Park` }
+        : { message: link, title: `Open ${car?.name ?? 'vehicle'} in Where'd We Park` }
+    );
+  }
+
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleString(undefined, {
       month: 'short',
@@ -269,86 +326,104 @@ export default function CarDetailScreen() {
         )}
       </MapView>
 
-      <ScrollView style={styles.card} contentContainerStyle={styles.cardContent}>
-        {car.license_plate && (
-          <Text style={styles.plate}>License plate: {car.license_plate}</Text>
-        )}
+      <View style={styles.card}>
+        <ScrollView style={styles.cardScroll} contentContainerStyle={styles.cardContent}>
+          {car.license_plate && (
+            <Text style={styles.plate}>License plate: {car.license_plate}</Text>
+          )}
 
-        {loc ? (
-          <View style={styles.locationInfo}>
-            <Text style={styles.locationLabel}>Last parked</Text>
-            <Text style={styles.locationDate}>{formatDate(loc.updated_at)}</Text>
-            {loc.profiles?.display_name && (
-              <Text style={styles.locationBy}>by {loc.profiles.display_name}</Text>
-            )}
-          </View>
-        ) : (
-          <Text style={styles.noLocation}>No parking location saved yet.</Text>
-        )}
-
-        {/* Photo section — only shown once a location exists */}
-        {loc && (
-          <View style={styles.photoSection}>
-            {imageUrl ? (
-              <>
-                <TouchableOpacity onPress={() => setImageFullscreen(true)} activeOpacity={0.9}>
-                  <Image source={{ uri: imageUrl }} style={styles.parkingImage} resizeMode="cover" />
+          {loc ? (
+            <View style={styles.locationInfo}>
+              <View style={styles.locationRow}>
+                <View style={styles.locationText}>
+                  <Text style={styles.locationLabel}>Last parked</Text>
+                  <Text style={styles.locationDate}>{formatDate(loc.updated_at)}</Text>
+                  {loc.profiles?.display_name && (
+                    <Text style={styles.locationBy}>by {loc.profiles.display_name}</Text>
+                  )}
+                </View>
+                <TouchableOpacity style={styles.directionsButton} onPress={handleDirections}>
+                  <Text style={styles.directionsButtonText}>Directions</Text>
                 </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.noLocation}>No parking location saved yet.</Text>
+          )}
+
+          {/* Photo section — only shown once a location exists */}
+          {loc && (
+            <View style={styles.photoSection}>
+              {imageUrl ? (
+                <>
+                  <TouchableOpacity onPress={() => setImageFullscreen(true)} activeOpacity={0.9}>
+                    <Image source={{ uri: imageUrl }} style={styles.parkingImage} resizeMode="cover" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.photoButton}
+                    onPress={handlePickImage}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage
+                      ? <ActivityIndicator color="#2563EB" size="small" />
+                      : <Text style={styles.photoButtonText}>Change Photo</Text>
+                    }
+                  </TouchableOpacity>
+                </>
+              ) : (
                 <TouchableOpacity
-                  style={styles.photoButton}
+                  style={[styles.addPhotoButton, uploadingImage && styles.buttonDisabled]}
                   onPress={handlePickImage}
                   disabled={uploadingImage}
                 >
                   {uploadingImage
-                    ? <ActivityIndicator color="#2563EB" size="small" />
-                    : <Text style={styles.photoButtonText}>Change Photo</Text>
+                    ? <ActivityIndicator color="#6B7280" size="small" />
+                    : <Text style={styles.addPhotoText}>+ Add Parking Photo</Text>
                   }
                 </TouchableOpacity>
-              </>
-            ) : (
-              <TouchableOpacity
-                style={[styles.addPhotoButton, uploadingImage && styles.buttonDisabled]}
-                onPress={handlePickImage}
-                disabled={uploadingImage}
-              >
-                {uploadingImage
-                  ? <ActivityIndicator color="#6B7280" size="small" />
-                  : <Text style={styles.addPhotoText}>+ Add Parking Photo</Text>
-                }
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+              )}
+            </View>
+          )}
+        </ScrollView>
 
-        <TouchableOpacity
-          style={[styles.button, savingLocation && styles.buttonDisabled]}
-          onPress={handleSaveLocation}
-          disabled={savingLocation}
-        >
-          {savingLocation
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>
-                {loc ? 'Update Parking Location' : 'Save Parking Location'}
-              </Text>
-          }
-        </TouchableOpacity>
+        <View style={styles.buttonSection}>
+          <TouchableOpacity
+            style={[styles.button, savingLocation && styles.buttonDisabled]}
+            onPress={handleSaveLocation}
+            disabled={savingLocation}
+          >
+            {savingLocation
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.buttonText}>
+                  {loc ? 'Update Parking Location' : 'Save Parking Location'}
+                </Text>
+            }
+          </TouchableOpacity>
 
-        {isOwner ? (
+          {isOwner ? (
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={() => router.push(`/car/${id}/share`)}
+            >
+              <Text style={styles.shareButtonText}>Manage Sharing</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleLeaveVehicle}
+            >
+              <Text style={styles.leaveButtonText}>Leave Vehicle</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.shareButton}
-            onPress={() => router.push(`/car/${id}/share`)}
+            onPress={handleShareShortcut}
           >
-            <Text style={styles.shareButtonText}>Manage Sharing</Text>
+            <Text style={styles.shareButtonText}>Add Home Screen Shortcut</Text>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.shareButton}
-            onPress={handleLeaveVehicle}
-          >
-            <Text style={styles.leaveButtonText}>Leave Vehicle</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+        </View>
+      </View>
 
       <Modal visible={imageFullscreen} transparent animationType="fade">
         <TouchableOpacity
@@ -380,10 +455,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 8,
-    maxHeight: '50%',
+  },
+  cardScroll: {
+    maxHeight: 260,
   },
   cardContent: {
     padding: 24,
+    paddingBottom: 8,
+    gap: 16,
+  },
+  buttonSection: {
+    padding: 24,
+    paddingTop: 8,
     gap: 16,
   },
   carHeader: {
@@ -402,6 +485,26 @@ const styles = StyleSheet.create({
   },
   locationInfo: {
     gap: 2,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  locationText: {
+    gap: 2,
+    flex: 1,
+  },
+  directionsButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  directionsButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   locationLabel: {
     fontSize: 12,

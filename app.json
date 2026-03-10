@@ -11,7 +11,12 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Used to save your vehicle's current parking location.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": [
+          "maps",
+          "comgooglemaps",
+          "waze"
+        ]
       },
       "bundleIdentifier": "com.dgibney.wheredwepark1"
     },
@@ -25,8 +30,7 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -48,12 +52,19 @@
           }
         }
       ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-6599569803835160~4098583838",
+          "iosAppId": "ca-app-pub-6599569803835160~2378308054"
+        }
+      ],
       "expo-secure-store",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Used to attach a photo to your parking location.",
-          "cameraPermission": "Used to take a photo of your parking location."
+          "photosPermission": "Used to attach a photo of your parking location or car.",
+          "cameraPermission": "Used to take a photo of your parking location or car."
         }
       ],
       "expo-font",

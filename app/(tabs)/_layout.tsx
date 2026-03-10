@@ -1,12 +1,22 @@
-import { Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomTabBar } from '@react-navigation/bottom-tabs';
+import AdBanner from '@/components/AdBanner';
 
 export default function TabLayout() {
   const router = useRouter();
 
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: '#2563EB' }}>
+    <Tabs
+      screenOptions={{ tabBarActiveTintColor: '#2563EB' }}
+      tabBar={(props) => (
+        <View>
+          <AdBanner />
+          <BottomTabBar {...props} />
+        </View>
+      )}
+    >
       <Tabs.Screen
         name="index"
         options={{
