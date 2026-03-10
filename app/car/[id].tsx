@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   Image,
   Modal,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   Alert,
   ActivityIndicator,
   ScrollView,
+  KeyboardAvoidingView,
   Share,
   Platform,
   Linking,
@@ -28,6 +30,7 @@ type CarDetail = {
     latitude: number;
     longitude: number;
     updated_at: string;
+    notes: string | null;
     image_path: string | null;
     profiles: { display_name: string | null } | null;
   } | null;
@@ -45,12 +48,37 @@ export default function CarDetailScreen() {
   const [userRegion, setUserRegion] = useState<Region | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageFullscreen, setImageFullscreen] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const savedNoteRef = useRef('');
+  const noteTextRef = useRef('');
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
     fetchCar();
     fetchUserLocation();
   }, [id]);
+
+  // Keep ref in sync so the unmount handler always sees the latest value
+  noteTextRef.current = noteText;
+
+  useEffect(() => {
+    const timer = setTimeout(() => handleSaveNote(noteText), 800);
+    return () => clearTimeout(timer);
+  }, [noteText]);
+
+  // Fire-and-forget save when navigating away (debounce timer would be cancelled otherwise)
+  useEffect(() => {
+    return () => {
+      if (noteTextRef.current !== savedNoteRef.current) {
+        supabase
+          .from('parking_locations')
+          .update({ notes: noteTextRef.current || null })
+          .eq('car_id', id);
+      }
+    };
+  }, []);
 
   async function fetchUserLocation() {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -67,7 +95,7 @@ export default function CarDetailScreen() {
   async function fetchCar() {
     const { data, error } = await supabase
       .from('cars')
-      .select('id, name, license_plate, owner_id, parking_locations(latitude, longitude, updated_at, image_path, profiles(display_name))')
+      .select('id, name, license_plate, owner_id, parking_locations(latitude, longitude, updated_at, notes, image_path, profiles(display_name))')
       .eq('id', id)
       .single();
 
@@ -77,10 +105,17 @@ export default function CarDetailScreen() {
       return;
     }
 
-    setCar(data as unknown as CarDetail);
+    const carData = data as unknown as CarDetail;
+    setCar(carData);
+    const fetchedNote = carData.parking_locations?.notes ?? '';
+    // Only reset the text field if there are no unsaved local changes
+    if (noteTextRef.current === savedNoteRef.current) {
+      setNoteText(fetchedNote);
+    }
+    savedNoteRef.current = fetchedNote;
 
     // Generate a signed URL for the parking image (valid 1 hour)
-    const imagePath = (data as unknown as CarDetail).parking_locations?.image_path;
+    const imagePath = carData.parking_locations?.image_path;
     if (imagePath) {
       const { data: signed } = await supabase.storage
         .from('parking-images')
@@ -227,6 +262,18 @@ export default function CarDetailScreen() {
     }
   }
 
+  async function handleSaveNote(text: string) {
+    if (text === savedNoteRef.current) return;
+    setSavingNote(true);
+    const { error } = await supabase
+      .from('parking_locations')
+      .update({ notes: text || null })
+      .eq('car_id', id);
+    if (!error) savedNoteRef.current = text;
+    else Alert.alert('Error', error.message);
+    setSavingNote(false);
+  }
+
   async function handleDirections() {
     if (!loc) return;
     const { latitude, longitude } = loc;
@@ -326,8 +373,8 @@ export default function CarDetailScreen() {
         )}
       </MapView>
 
-      <View style={styles.card}>
-        <ScrollView style={styles.cardScroll} contentContainerStyle={styles.cardContent}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.card}>
+        <ScrollView ref={scrollViewRef} style={styles.cardScroll} contentContainerStyle={styles.cardContent}>
           {car.license_plate && (
             <Text style={styles.plate}>License plate: {car.license_plate}</Text>
           )}
@@ -351,7 +398,7 @@ export default function CarDetailScreen() {
             <Text style={styles.noLocation}>No parking location saved yet.</Text>
           )}
 
-          {/* Photo section — only shown once a location exists */}
+          {/* Photo + note section — only shown once a location exists */}
           {loc && (
             <View style={styles.photoSection}>
               {imageUrl ? (
@@ -382,6 +429,20 @@ export default function CarDetailScreen() {
                   }
                 </TouchableOpacity>
               )}
+
+              <View style={styles.noteRow}>
+                <TextInput
+                  style={styles.noteInput}
+                  value={noteText}
+                  onChangeText={setNoteText}
+                  onFocus={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                  placeholder="Add a note about this parking spot…"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  maxLength={500}
+                />
+                {savingNote && <ActivityIndicator size="small" color="#2563EB" style={styles.noteSpinner} />}
+              </View>
             </View>
           )}
         </ScrollView>
@@ -423,7 +484,7 @@ export default function CarDetailScreen() {
             <Text style={styles.shareButtonText}>Add Home Screen Shortcut</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       <Modal visible={imageFullscreen} transparent animationType="fade">
         <TouchableOpacity
@@ -556,6 +617,26 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 14,
     fontWeight: '500',
+  },
+  noteRow: {
+    position: 'relative',
+  },
+  noteInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingRight: 32,
+    fontSize: 14,
+    color: '#111827',
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  noteSpinner: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
   },
   button: {
     backgroundColor: '#2563EB',

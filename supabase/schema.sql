@@ -54,7 +54,7 @@ create table parking_locations (
   longitude           double precision not null,
   updated_by_user_id  uuid references profiles(id) not null,
   updated_at          timestamptz default now() not null,
-  notes               text,
+  notes               text check (char_length(notes) <= 500),
   image_path          text
 );
 
@@ -224,10 +224,11 @@ create policy "Users with access can upsert parking locations"
     and auth.uid() = updated_by_user_id
   );
 
+-- Any user with car access can update (notes, image, etc.).
+-- updated_by_user_id is set explicitly by the app when saving a new location.
 create policy "Users with access can update parking locations"
   on parking_locations for update
-  using (user_has_car_access(car_id))
-  with check (auth.uid() = updated_by_user_id);
+  using (user_has_car_access(car_id));
 
 -- ------------------------------------------------------------
 -- STORAGE: parking photos (private bucket, one image per car)
