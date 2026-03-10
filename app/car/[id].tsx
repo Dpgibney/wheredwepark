@@ -50,6 +50,10 @@ export default function CarDetailScreen() {
   const [imageFullscreen, setImageFullscreen] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPlate, setEditPlate] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const savedNoteRef = useRef('');
   const noteTextRef = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -274,6 +278,29 @@ export default function CarDetailScreen() {
     setSavingNote(false);
   }
 
+  function openEditModal() {
+    setEditName(car!.name);
+    setEditPlate(car!.license_plate ?? '');
+    setEditModalVisible(true);
+  }
+
+  async function handleSaveEdit() {
+    const trimmedName = editName.trim();
+    if (!trimmedName) return;
+    setSavingEdit(true);
+    const { error } = await supabase
+      .from('cars')
+      .update({ name: trimmedName, license_plate: editPlate.trim() || null })
+      .eq('id', id);
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      setCar(prev => prev ? { ...prev, name: trimmedName, license_plate: editPlate.trim() || null } : prev);
+      setEditModalVisible(false);
+    }
+    setSavingEdit(false);
+  }
+
   async function handleDirections() {
     if (!loc) return;
     const { latitude, longitude } = loc;
@@ -361,7 +388,16 @@ export default function CarDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: car.name }} />
+      <Stack.Screen
+        options={{
+          title: car.name,
+          headerRight: isOwner ? () => (
+            <TouchableOpacity onPress={openEditModal} style={{ marginRight: 16 }}>
+              <Text style={{ color: '#2563EB', fontSize: 16 }}>Edit</Text>
+            </TouchableOpacity>
+          ) : undefined,
+        }}
+      />
 
       <MapView style={styles.map} region={mapRegion} showsUserLocation>
         {loc && (
@@ -485,6 +521,58 @@ export default function CarDetailScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={editModalVisible} transparent animationType="fade">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.editBackdrop}
+        >
+          <View style={styles.editSheet}>
+            <Text style={styles.editTitle}>Edit Vehicle</Text>
+
+            <Text style={styles.editLabel}>Name</Text>
+            <TextInput
+              style={styles.editInput}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Vehicle name"
+              placeholderTextColor="#9CA3AF"
+              maxLength={100}
+              autoFocus
+            />
+
+            <Text style={styles.editLabel}>License Plate</Text>
+            <TextInput
+              style={styles.editInput}
+              value={editPlate}
+              onChangeText={setEditPlate}
+              placeholder="Optional"
+              placeholderTextColor="#9CA3AF"
+              maxLength={20}
+              autoCapitalize="characters"
+            />
+
+            <TouchableOpacity
+              style={[styles.button, (!editName.trim() || savingEdit) && styles.buttonDisabled]}
+              onPress={handleSaveEdit}
+              disabled={!editName.trim() || savingEdit}
+            >
+              {savingEdit
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.buttonText}>Save</Text>
+              }
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={() => setEditModalVisible(false)}
+              disabled={savingEdit}
+            >
+              <Text style={styles.shareButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal visible={imageFullscreen} transparent animationType="fade">
         <TouchableOpacity
@@ -675,6 +763,39 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  editBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  editSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    gap: 8,
+  },
+  editTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  editLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 8,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: '#111827',
   },
   fullscreenBackdrop: {
     flex: 1,
