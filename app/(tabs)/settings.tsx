@@ -14,21 +14,31 @@ import {
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
+type ActiveSheet = 'password' | 'name' | null;
+
 export default function SettingsScreen() {
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+  const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const slideAnim = useRef(new Animated.Value(600)).current;
+
+  // Password fields
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Name fields
+  const [nameInput, setNameInput] = useState('');
+  const [changingName, setChangingName] = useState(false);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
       setEmail(user.email ?? null);
+      setUserId(user.id);
       supabase
         .from('profiles')
         .select('display_name')
@@ -38,19 +48,21 @@ export default function SettingsScreen() {
     });
   }, []);
 
-  function openModal() {
-    setChangePasswordVisible(true);
+  function openSheet(sheet: ActiveSheet) {
+    if (sheet === 'name') setNameInput(displayName ?? '');
+    setActiveSheet(sheet);
     slideAnim.setValue(600);
     Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
   }
 
-  function closeModal() {
+  function closeSheet() {
     Animated.timing(slideAnim, { toValue: 600, duration: 250, useNativeDriver: true }).start(() => {
-      setChangePasswordVisible(false);
+      setActiveSheet(null);
     });
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    setNameInput('');
   }
 
   async function handleChangePassword() {
@@ -78,15 +90,38 @@ export default function SettingsScreen() {
       Alert.alert('Error', error.message);
     } else {
       Alert.alert('Success', 'Your password has been updated.');
-      closeModal();
+      closeSheet();
     }
   }
 
-  const saveDisabled =
+  async function handleChangeName() {
+    const trimmed = nameInput.trim();
+    if (trimmed.length === 0) {
+      Alert.alert('Required', 'Name cannot be empty.');
+      return;
+    }
+    setChangingName(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ display_name: trimmed })
+      .eq('id', userId!);
+    setChangingName(false);
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      setDisplayName(trimmed);
+      Alert.alert('Success', 'Your name has been updated.');
+      closeSheet();
+    }
+  }
+
+  const passwordSaveDisabled =
     changingPassword ||
     currentPassword.length === 0 ||
     newPassword.length === 0 ||
     confirmPassword.length === 0;
+
+  const nameSaveDisabled = changingName || nameInput.trim().length === 0;
 
   return (
     <View style={styles.container}>
@@ -103,77 +138,110 @@ export default function SettingsScreen() {
 
       {/* Actions */}
       <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.rowButton}
-          onPress={openModal}
-        >
+        <TouchableOpacity style={styles.rowButton} onPress={() => openSheet('name')}>
+          <Text style={styles.rowButtonText}>Change Name</Text>
+        </TouchableOpacity>
+        <View style={styles.divider} />
+        <TouchableOpacity style={styles.rowButton} onPress={() => openSheet('password')}>
           <Text style={styles.rowButtonText}>Change Password</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={() => supabase.auth.signOut()}
-        >
+        <TouchableOpacity style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Change Password Modal */}
-      <Modal visible={changePasswordVisible} transparent animationType="none">
+      {/* Bottom Sheet Modal */}
+      <Modal visible={activeSheet !== null} transparent animationType="none">
         <KeyboardAvoidingView
           style={styles.editBackdrop}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeModal} />
-          <Animated.View style={[styles.editSheet, { transform: [{ translateY: slideAnim }] }]}>
-            <Text style={styles.editTitle}>Change Password</Text>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeSheet} />
 
-            <Text style={styles.editLabel}>Current Password</Text>
-            <TextInput
-              style={styles.editInput}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-              placeholder="Enter current password"
-              autoCapitalize="none"
-            />
+          {activeSheet === 'password' && (
+            <Animated.View style={[styles.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+              <Text style={styles.editTitle}>Change Password</Text>
 
-            <Text style={styles.editLabel}>New Password</Text>
-            <TextInput
-              style={styles.editInput}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              placeholder="At least 6 characters"
-              autoCapitalize="none"
-            />
+              <Text style={styles.editLabel}>Current Password</Text>
+              <TextInput
+                style={styles.editInput}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                placeholder="Enter current password"
+                autoCapitalize="none"
+              />
 
-            <Text style={styles.editLabel}>Confirm New Password</Text>
-            <TextInput
-              style={styles.editInput}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              placeholder="Repeat new password"
-              autoCapitalize="none"
-            />
+              <Text style={styles.editLabel}>New Password</Text>
+              <TextInput
+                style={styles.editInput}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                placeholder="At least 6 characters"
+                autoCapitalize="none"
+              />
 
-            <TouchableOpacity
-              style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
-              onPress={handleChangePassword}
-              disabled={saveDisabled}
-            >
-              {changingPassword ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>Update Password</Text>
-              )}
-            </TouchableOpacity>
+              <Text style={styles.editLabel}>Confirm New Password</Text>
+              <TextInput
+                style={styles.editInput}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                placeholder="Repeat new password"
+                autoCapitalize="none"
+              />
 
-            <TouchableOpacity onPress={closeModal} style={styles.cancelLink}>
-              <Text style={styles.cancelLinkText}>Cancel</Text>
-            </TouchableOpacity>
-          </Animated.View>
+              <TouchableOpacity
+                style={[styles.saveButton, passwordSaveDisabled && styles.saveButtonDisabled]}
+                onPress={handleChangePassword}
+                disabled={passwordSaveDisabled}
+              >
+                {changingPassword ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Update Password</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
+                <Text style={styles.cancelLinkText}>Cancel</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {activeSheet === 'name' && (
+            <Animated.View style={[styles.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+              <Text style={styles.editTitle}>Change Name</Text>
+
+              <Text style={styles.editLabel}>Display Name</Text>
+              <TextInput
+                style={styles.editInput}
+                value={nameInput}
+                onChangeText={setNameInput}
+                placeholder="Your name"
+                autoCapitalize="words"
+                autoFocus
+              />
+
+              <TouchableOpacity
+                style={[styles.saveButton, nameSaveDisabled && styles.saveButtonDisabled]}
+                onPress={handleChangeName}
+                disabled={nameSaveDisabled}
+              >
+                {changingName ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Update Name</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
+                <Text style={styles.cancelLinkText}>Cancel</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
         </KeyboardAvoidingView>
       </Modal>
     </View>
