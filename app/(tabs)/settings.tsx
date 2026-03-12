@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
@@ -18,6 +19,7 @@ export default function SettingsScreen() {
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(600)).current;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,8 +38,16 @@ export default function SettingsScreen() {
     });
   }, []);
 
+  function openModal() {
+    setChangePasswordVisible(true);
+    slideAnim.setValue(600);
+    Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+  }
+
   function closeModal() {
-    setChangePasswordVisible(false);
+    Animated.timing(slideAnim, { toValue: 600, duration: 250, useNativeDriver: true }).start(() => {
+      setChangePasswordVisible(false);
+    });
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
@@ -95,7 +105,7 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <TouchableOpacity
           style={styles.rowButton}
-          onPress={() => setChangePasswordVisible(true)}
+          onPress={openModal}
         >
           <Text style={styles.rowButtonText}>Change Password</Text>
         </TouchableOpacity>
@@ -109,13 +119,13 @@ export default function SettingsScreen() {
       </View>
 
       {/* Change Password Modal */}
-      <Modal visible={changePasswordVisible} transparent animationType="slide">
+      <Modal visible={changePasswordVisible} transparent animationType="none">
         <KeyboardAvoidingView
           style={styles.editBackdrop}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeModal} />
-          <View style={styles.editSheet}>
+          <Animated.View style={[styles.editSheet, { transform: [{ translateY: slideAnim }] }]}>
             <Text style={styles.editTitle}>Change Password</Text>
 
             <Text style={styles.editLabel}>Current Password</Text>
@@ -163,7 +173,7 @@ export default function SettingsScreen() {
             <TouchableOpacity onPress={closeModal} style={styles.cancelLink}>
               <Text style={styles.cancelLinkText}>Cancel</Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
     </View>
