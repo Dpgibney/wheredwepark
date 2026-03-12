@@ -222,14 +222,14 @@ export default function CarDetailScreen() {
         Alert.alert('Permission Denied', 'Camera access is required to take a photo.');
         return;
       }
-      result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 });
+      result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.5 });
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Photo library access is required.');
         return;
       }
-      result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, quality: 0.7 });
+      result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, quality: 0.5 });
     }
 
     if (result.canceled) return;
@@ -393,7 +393,7 @@ export default function CarDetailScreen() {
           title: car.name,
           headerRight: isOwner ? () => (
             <TouchableOpacity onPress={openEditModal} style={{ marginRight: 16 }}>
-              <Text style={{ color: '#2563EB', fontSize: 16 }}>Edit</Text>
+              <Text style={{ color: '#2563EB', fontSize: 22, fontWeight: '400' }}>Edit</Text>
             </TouchableOpacity>
           ) : undefined,
         }}
