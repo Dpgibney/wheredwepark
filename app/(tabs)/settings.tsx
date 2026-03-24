@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  Linking,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
@@ -144,6 +145,13 @@ export default function SettingsScreen() {
         <View style={styles.divider} />
         <TouchableOpacity style={styles.rowButton} onPress={() => openSheet('password')}>
           <Text style={styles.rowButtonText}>Change Password</Text>
+        </TouchableOpacity>
+        <View style={styles.divider} />
+        <TouchableOpacity
+          style={styles.rowButton}
+          onPress={() => Linking.openURL('https://doc-hosting.flycricket.io/wheredwepark-privacy-policy/84cadd06-966f-4e6c-bd3e-1eb6bd0c8a5d/privacy')}
+        >
+          <Text style={styles.rowButtonText}>Privacy Policy</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
         <TouchableOpacity style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>

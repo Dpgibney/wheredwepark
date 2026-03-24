@@ -3,11 +3,11 @@ import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads'
 
 const ANDROID_AD_UNIT_ID = __DEV__
   ? TestIds.ADAPTIVE_BANNER
-  : 'ca-app-pub-6599569803835160/5915537898'; // TODO: replace with real Android Ad Unit ID
+  : 'ca-app-pub-6599569803835160/5915537898';
 
 const IOS_AD_UNIT_ID = __DEV__
   ? TestIds.ADAPTIVE_BANNER
-  : 'ca-app-pub-6599569803835160/5221073758'; // TODO: replace with real iOS Ad Unit ID
+  : 'ca-app-pub-6599569803835160/5221073758';
 
 const adUnitId =
   typeof process !== 'undefined' && process.env.EXPO_OS === 'android'

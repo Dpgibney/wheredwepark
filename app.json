@@ -18,7 +18,8 @@
           "waze"
         ]
       },
-      "bundleIdentifier": "com.dgibney.wheredwepark1"
+      "bundleIdentifier": "com.dgibney.wheredwepark1",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
