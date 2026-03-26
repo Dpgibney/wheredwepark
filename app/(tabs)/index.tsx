@@ -140,24 +140,6 @@ export default function HomeScreen() {
     );
   }
 
-  async function handleDelete(car: Car) {
-    Alert.alert(
-      'Remove Vehicle',
-      `Remove "${car.name}" from your garage?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.from('cars').delete().eq('id', car.id);
-            if (error) Alert.alert('Error', error.message);
-            else setCars(prev => prev.filter(c => c.id !== car.id));
-          },
-        },
-      ]
-    );
-  }
 
   function formatLastParked(updatedAt: string) {
     const diffMs = Date.now() - new Date(updatedAt).getTime();
@@ -253,14 +235,6 @@ export default function HomeScreen() {
               )}
             </View>
             <View style={styles.cardRight}>
-              {isOwner && (
-                <TouchableOpacity
-                  onPress={() => handleDelete(item)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Text style={styles.deleteIcon}>🗑</Text>
-                </TouchableOpacity>
-              )}
               <Text style={styles.chevron}>›</Text>
             </View>
           </TouchableOpacity>
@@ -411,9 +385,6 @@ const styles = StyleSheet.create({
     color: '#7C3AED',
     fontWeight: '500',
     marginTop: 4,
-  },
-  deleteIcon: {
-    fontSize: 16,
   },
   chevron: {
     fontSize: 22,

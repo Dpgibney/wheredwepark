@@ -284,6 +284,25 @@ export default function CarDetailScreen() {
     setEditModalVisible(true);
   }
 
+  async function handleDeleteCar() {
+    Alert.alert(
+      'Remove Vehicle',
+      `Remove "${car!.name}" from your Vehicles?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.from('cars').delete().eq('id', id);
+            if (error) Alert.alert('Error', error.message);
+            else router.back();
+          },
+        },
+      ]
+    );
+  }
+
   async function handleSaveEdit() {
     const trimmedName = editName.trim();
     if (!trimmedName) return;
@@ -569,6 +588,14 @@ export default function CarDetailScreen() {
               disabled={savingEdit}
             >
               <Text style={styles.shareButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleDeleteCar}
+              disabled={savingEdit}
+            >
+              <Text style={[styles.shareButtonText, { color: '#DC2626' }]}>Delete Vehicle</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
