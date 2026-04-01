@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 
 type ParkingLocation = {
@@ -33,6 +34,7 @@ type Car = {
   license_plate: string | null;
   owner_id: string;
   vehicle_type: VehicleType;
+  emoji: string | null;
   parking_locations: ParkingLocation | null;
 };
 
@@ -42,6 +44,7 @@ type PendingInvite = {
   cars: {
     name: string;
     vehicle_type: VehicleType;
+    emoji: string | null;
     profiles: { display_name: string | null; email: string } | null;
   } | null;
 };
@@ -52,6 +55,7 @@ export default function HomeScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [savingLocationId, setSavingLocationId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -70,7 +74,7 @@ export default function HomeScreen() {
 
     const { data, error } = await supabase
       .from('cars')
-      .select('id, name, license_plate, owner_id, vehicle_type, parking_locations(latitude, longitude, updated_at)')
+      .select('id, name, license_plate, owner_id, vehicle_type, emoji, parking_locations(latitude, longitude, updated_at)')
       .order('created_at', { ascending: false });
 
     if (error) Alert.alert('Error', error.message);
@@ -83,7 +87,7 @@ export default function HomeScreen() {
 
     const { data, error } = await supabase
       .from('car_shares')
-      .select('id, car_id, cars(name, vehicle_type, profiles(display_name, email))')
+      .select('id, car_id, cars(name, vehicle_type, emoji, profiles(display_name, email))')
       .eq('shared_with_user_id', user.id)
       .eq('status', 'pending');
 
@@ -141,6 +145,41 @@ export default function HomeScreen() {
   }
 
 
+  async function handleQuickUpdateLocation(carId: string) {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Location permission is required to save your parking spot.');
+      return;
+    }
+
+    setSavingLocationId(carId);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+
+      const { error } = await supabase.from('parking_locations').upsert(
+        {
+          car_id: carId,
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          updated_by_user_id: user!.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'car_id' }
+      );
+
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        await fetchCars();
+      }
+    } catch {
+      Alert.alert('Error', 'Could not get your current location. Make sure Location Services are enabled.');
+    } finally {
+      setSavingLocationId(null);
+    }
+  }
+
   function formatLastParked(updatedAt: string) {
     const diffMs = Date.now() - new Date(updatedAt).getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -176,7 +215,7 @@ export default function HomeScreen() {
               return (
                 <View key={invite.id} style={styles.inviteCard}>
                   <Text style={styles.inviteName}>
-                    {VEHICLE_EMOJI[vehicle?.vehicle_type ?? 'car']} {vehicle?.name ?? 'A vehicle'}
+                    {vehicle?.emoji ?? VEHICLE_EMOJI[vehicle?.vehicle_type ?? 'car']} {vehicle?.name ?? 'A vehicle'}
                   </Text>
                   <Text style={styles.inviteSubtitle}>Shared by {ownerName}</Text>
                   <View style={styles.inviteActions}>
@@ -218,7 +257,7 @@ export default function HomeScreen() {
           >
             <View style={styles.cardLeft}>
               <Text style={styles.carName}>
-                {VEHICLE_EMOJI[item.vehicle_type] ?? '🚗'} {item.name}
+                {item.emoji ?? VEHICLE_EMOJI[item.vehicle_type] ?? '🚗'} {item.name}
               </Text>
               {item.license_plate && (
                 <Text style={styles.plate}>{item.license_plate}</Text>
@@ -235,6 +274,17 @@ export default function HomeScreen() {
               )}
             </View>
             <View style={styles.cardRight}>
+              <TouchableOpacity
+                style={styles.updateLocationButton}
+                onPress={() => handleQuickUpdateLocation(item.id)}
+                disabled={savingLocationId === item.id}
+              >
+                {savingLocationId === item.id ? (
+                  <ActivityIndicator size="small" color="#2563EB" />
+                ) : (
+                  <Text style={styles.updateLocationText}>📍</Text>
+                )}
+              </TouchableOpacity>
               <Text style={styles.chevron}>›</Text>
             </View>
           </TouchableOpacity>
@@ -390,5 +440,18 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: '#D1D5DB',
     lineHeight: 26,
+  },
+  updateLocationButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updateLocationText: {
+    fontSize: 16,
   },
 });

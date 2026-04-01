@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
   Alert,
   ActivityIndicator,
@@ -21,10 +22,17 @@ const VEHICLE_TYPES: { type: VehicleType; label: string; emoji: string }[] = [
   { type: 'motorcycle', label: 'Motorcycle', emoji: '🏍️' },
 ];
 
+const VEHICLE_EMOJIS: Record<VehicleType, string[]> = {
+  car:        ['🚗','🚙','🚕','🏎️','🚓','🚑','🚒','🚐','🛻','🚌','🚎','🚚','🚛','🚜'],
+  bike:       ['🚲','🛴'],
+  motorcycle: ['🏍️','🛵'],
+};
+
 export default function AddCarScreen() {
   const [name, setName] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [vehicleType, setVehicleType] = useState<VehicleType>('car');
+  const [emoji, setEmoji] = useState(VEHICLE_EMOJIS.car[0]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -62,6 +70,7 @@ export default function AddCarScreen() {
       name: name.trim(),
       license_plate: licensePlate.trim() || null,
       vehicle_type: vehicleType,
+      emoji,
     });
 
     setLoading(false);
@@ -78,24 +87,40 @@ export default function AddCarScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.inner}>
+      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         <Text style={styles.label}>Vehicle Type *</Text>
         <View style={styles.typeRow}>
-          {VEHICLE_TYPES.map(({ type, label, emoji }) => {
+          {VEHICLE_TYPES.map(({ type, label, emoji: typeEmoji }) => {
             const selected = vehicleType === type;
             return (
               <TouchableOpacity
                 key={type}
                 style={[styles.typeButton, selected && styles.typeButtonSelected]}
-                onPress={() => setVehicleType(type)}
+                onPress={() => {
+                  setVehicleType(type);
+                  setEmoji(VEHICLE_EMOJIS[type][0]);
+                }}
               >
-                <Text style={styles.typeEmoji}>{emoji}</Text>
+                <Text style={styles.typeEmoji}>{typeEmoji}</Text>
                 <Text style={[styles.typeLabel, selected && styles.typeLabelSelected]}>
                   {label}
                 </Text>
               </TouchableOpacity>
             );
           })}
+        </View>
+
+        <Text style={styles.label}>Icon</Text>
+        <View style={styles.emojiGrid}>
+          {VEHICLE_EMOJIS[vehicleType].map(e => (
+            <TouchableOpacity
+              key={e}
+              style={[styles.emojiButton, emoji === e && styles.emojiButtonSelected]}
+              onPress={() => setEmoji(e)}
+            >
+              <Text style={styles.emojiChar}>{e}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <Text style={styles.label}>Vehicle Name *</Text>
@@ -131,7 +156,7 @@ export default function AddCarScreen() {
             : <Text style={styles.buttonText}>Add Vehicle</Text>
           }
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -181,6 +206,29 @@ const styles = StyleSheet.create({
   typeLabelSelected: {
     color: '#2563EB',
     fontWeight: '600',
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  emojiButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiButtonSelected: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+  },
+  emojiChar: {
+    fontSize: 24,
   },
   input: {
     backgroundColor: '#fff',

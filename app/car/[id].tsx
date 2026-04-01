@@ -21,11 +21,29 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 
+type VehicleType = 'car' | 'bike' | 'motorcycle';
+
+const VEHICLE_EMOJIS: Record<VehicleType, string[]> = {
+  car:        ['🚗','🚙','🚕','🏎️','🚓','🚑','🚒','🚐','🛻','🚌','🚎','🚚','🚛','🚜'],
+  bike:       ['🚲','🛴'],
+  motorcycle: ['🏍️','🛵'],
+};
+
+const DEFAULT_EMOJI: Record<VehicleType, string> = {
+  car: '🚗', bike: '🚲', motorcycle: '🏍️',
+};
+
+const TYPE_LABELS: Record<VehicleType, string> = {
+  car: 'Cars', bike: 'Bikes', motorcycle: 'Motorcycles',
+};
+
 type CarDetail = {
   id: string;
   name: string;
   license_plate: string | null;
   owner_id: string;
+  vehicle_type: VehicleType;
+  emoji: string | null;
   parking_locations: {
     latitude: number;
     longitude: number;
@@ -53,6 +71,8 @@ export default function CarDetailScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPlate, setEditPlate] = useState('');
+  const [editEmoji, setEditEmoji] = useState('🚗');
+  const [editVehicleType, setEditVehicleType] = useState<VehicleType>('car');
   const [savingEdit, setSavingEdit] = useState(false);
   const savedNoteRef = useRef('');
   const noteTextRef = useRef('');
@@ -99,7 +119,7 @@ export default function CarDetailScreen() {
   async function fetchCar() {
     const { data, error } = await supabase
       .from('cars')
-      .select('id, name, license_plate, owner_id, parking_locations(latitude, longitude, updated_at, notes, image_path, profiles(display_name))')
+      .select('id, name, license_plate, owner_id, vehicle_type, emoji, parking_locations(latitude, longitude, updated_at, notes, image_path, profiles(display_name))')
       .eq('id', id)
       .single();
 
@@ -281,6 +301,9 @@ export default function CarDetailScreen() {
   function openEditModal() {
     setEditName(car!.name);
     setEditPlate(car!.license_plate ?? '');
+    const type = car!.vehicle_type ?? 'car';
+    setEditVehicleType(type);
+    setEditEmoji(car!.emoji ?? DEFAULT_EMOJI[type]);
     setEditModalVisible(true);
   }
 
@@ -309,12 +332,12 @@ export default function CarDetailScreen() {
     setSavingEdit(true);
     const { error } = await supabase
       .from('cars')
-      .update({ name: trimmedName, license_plate: editPlate.trim() || null })
+      .update({ name: trimmedName, license_plate: editPlate.trim() || null, vehicle_type: editVehicleType, emoji: editEmoji })
       .eq('id', id);
     if (error) {
       Alert.alert('Error', error.message);
     } else {
-      setCar(prev => prev ? { ...prev, name: trimmedName, license_plate: editPlate.trim() || null } : prev);
+      setCar(prev => prev ? { ...prev, name: trimmedName, license_plate: editPlate.trim() || null, vehicle_type: editVehicleType, emoji: editEmoji } : prev);
       setEditModalVisible(false);
     }
     setSavingEdit(false);
@@ -549,54 +572,73 @@ export default function CarDetailScreen() {
           <View style={styles.editSheet}>
             <Text style={styles.editTitle}>Edit Vehicle</Text>
 
-            <Text style={styles.editLabel}>Name</Text>
-            <TextInput
-              style={styles.editInput}
-              value={editName}
-              onChangeText={setEditName}
-              placeholder="Vehicle name"
-              placeholderTextColor="#9CA3AF"
-              maxLength={100}
-              autoFocus
-            />
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.editScrollContent}>
+              <Text style={styles.editLabel}>Icon</Text>
+              {(['car', 'bike', 'motorcycle'] as VehicleType[]).map(type => (
+                <View key={type}>
+                  <Text style={styles.emojiSectionLabel}>{TYPE_LABELS[type]}</Text>
+                  <View style={styles.emojiGrid}>
+                    {VEHICLE_EMOJIS[type].map(e => (
+                      <TouchableOpacity
+                        key={e}
+                        style={[styles.emojiButton, editEmoji === e && styles.emojiButtonSelected]}
+                        onPress={() => { setEditEmoji(e); setEditVehicleType(type); }}
+                      >
+                        <Text style={styles.emojiChar}>{e}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ))}
 
-            <Text style={styles.editLabel}>License Plate</Text>
-            <TextInput
-              style={styles.editInput}
-              value={editPlate}
-              onChangeText={setEditPlate}
-              placeholder="Optional"
-              placeholderTextColor="#9CA3AF"
-              maxLength={20}
-              autoCapitalize="characters"
-            />
+              <Text style={styles.editLabel}>Name</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Vehicle name"
+                placeholderTextColor="#9CA3AF"
+                maxLength={100}
+              />
 
-            <TouchableOpacity
-              style={[styles.button, (!editName.trim() || savingEdit) && styles.buttonDisabled]}
-              onPress={handleSaveEdit}
-              disabled={!editName.trim() || savingEdit}
-            >
-              {savingEdit
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.buttonText}>Save</Text>
-              }
-            </TouchableOpacity>
+              <Text style={styles.editLabel}>License Plate</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editPlate}
+                onChangeText={setEditPlate}
+                placeholder="Optional"
+                placeholderTextColor="#9CA3AF"
+                maxLength={20}
+                autoCapitalize="characters"
+              />
 
-            <TouchableOpacity
-              style={styles.shareButton}
-              onPress={() => setEditModalVisible(false)}
-              disabled={savingEdit}
-            >
-              <Text style={styles.shareButtonText}>Cancel</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.editButton, (!editName.trim() || savingEdit) && styles.buttonDisabled]}
+                onPress={handleSaveEdit}
+                disabled={!editName.trim() || savingEdit}
+              >
+                {savingEdit
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.buttonText}>Save</Text>
+                }
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.shareButton}
-              onPress={handleDeleteCar}
-              disabled={savingEdit}
-            >
-              <Text style={[styles.shareButtonText, { color: '#DC2626' }]}>Delete Vehicle</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={() => setEditModalVisible(false)}
+                disabled={savingEdit}
+              >
+                <Text style={styles.shareButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={handleDeleteCar}
+                disabled={savingEdit}
+              >
+                <Text style={[styles.shareButtonText, { color: '#DC2626' }]}>Delete Vehicle</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -800,8 +842,47 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    maxHeight: '90%',
+  },
+  editScrollContent: {
+    paddingBottom: 32,
     gap: 8,
+  },
+  emojiSectionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  emojiButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiButtonSelected: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+  },
+  emojiChar: {
+    fontSize: 24,
+  },
+  editButton: {
+    marginTop: 8,
   },
   editTitle: {
     fontSize: 18,
