@@ -29,8 +29,8 @@ export default function RegisterScreen() {
       Alert.alert('Error', 'Display name must be 100 characters or fewer.');
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters.');
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters.');
       return;
     }
 
@@ -85,7 +85,7 @@ export default function RegisterScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Password (min. 6 characters)"
+          placeholder="Password (min. 8 characters)"
           placeholderTextColor="#9CA3AF"
           value={password}
           onChangeText={setPassword}

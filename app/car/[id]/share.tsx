@@ -28,13 +28,11 @@ export default function ShareScreen() {
   const { id: carId } = useLocalSearchParams<{ id: string }>();
 
   const [shares, setShares] = useState<Share[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
     fetchShares();
   }, [carId]);
 
@@ -57,13 +55,12 @@ export default function ShareScreen() {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed) return;
 
-    const { data: profile, error: lookupError } = await supabase
-      .from('profiles')
-      .select('id, display_name, email')
-      .eq('email', trimmed)
-      .single();
+    const { data: lookup, error: lookupError } = await supabase
+      .rpc('lookup_profile_for_share', { p_email: trimmed });
 
-    if (lookupError || !profile || profile.id === userId) {
+    const profile = Array.isArray(lookup) && lookup.length > 0 ? lookup[0] : null;
+
+    if (lookupError || !profile) {
       setEmail('');
       Alert.alert('Invite Sent', 'An invite has been sent to that user if they have an account.');
       return;

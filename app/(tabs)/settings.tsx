@@ -67,8 +67,8 @@ export default function SettingsScreen() {
   }
 
   async function handleChangePassword() {
-    if (newPassword.length < 6) {
-      Alert.alert('Too short', 'New password must be at least 6 characters.');
+    if (newPassword.length < 8) {
+      Alert.alert('Too short', 'New password must be at least 8 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -187,7 +187,7 @@ export default function SettingsScreen() {
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters"
                 autoCapitalize="none"
               />
 

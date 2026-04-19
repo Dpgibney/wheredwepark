@@ -137,14 +137,64 @@ create policy "Users can view own profile"
   on profiles for select
   using (auth.uid() = id);
 
--- Allows searching for other users by email when sharing a vehicle
-create policy "Authenticated users can search profiles"
+-- Allows a user to see profiles they are connected to via a shared vehicle
+-- (car owner <-> share recipient, and the profile who last updated a location
+-- on a car they can see). Used for owner names, invite cards, and
+-- "last parked by" attribution.
+create or replace function user_connected_to_profile(p_profile_id uuid)
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from cars c
+    where c.owner_id = p_profile_id
+      and (
+        c.owner_id = auth.uid()
+        or exists (
+          select 1 from car_shares cs
+          where cs.car_id = c.id and cs.shared_with_user_id = auth.uid()
+        )
+      )
+  ) or exists (
+    select 1 from cars c
+    join car_shares cs on cs.car_id = c.id
+    where c.owner_id = auth.uid()
+      and cs.shared_with_user_id = p_profile_id
+  ) or exists (
+    select 1 from parking_locations pl
+    where pl.updated_by_user_id = p_profile_id
+      and user_has_car_access(pl.car_id)
+  );
+$$;
+
+create policy "Users can view connected profiles"
   on profiles for select
-  using (auth.uid() is not null);
+  using (user_connected_to_profile(id));
 
 create policy "Users can update own profile"
   on profiles for update
   using (auth.uid() = id);
+
+-- Secure RPC for looking up a user by email when sending a share invite.
+-- Returns id + display_name only on exact match; no rows otherwise.
+create or replace function lookup_profile_for_share(p_email text)
+returns table (id uuid, display_name text)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select p.id, p.display_name
+  from profiles p
+  where lower(p.email) = lower(trim(p_email))
+    and p.id <> auth.uid()
+  limit 1;
+$$;
+
+revoke all on function lookup_profile_for_share(text) from public;
+grant execute on function lookup_profile_for_share(text) to authenticated;
 
 -- cars
 create policy "Users can view accessible cars"
@@ -225,10 +275,32 @@ create policy "Users with access can upsert parking locations"
   );
 
 -- Any user with car access can update (notes, image, etc.).
--- updated_by_user_id is set explicitly by the app when saving a new location.
+-- Attribution spoofing and car_id reassignment are blocked by the trigger below.
 create policy "Users with access can update parking locations"
   on parking_locations for update
-  using (user_has_car_access(car_id));
+  using (user_has_car_access(car_id))
+  with check (user_has_car_access(car_id));
+
+create or replace function enforce_parking_location_update()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.car_id <> old.car_id then
+    raise exception 'car_id cannot be modified';
+  end if;
+  if new.updated_by_user_id <> old.updated_by_user_id
+     and new.updated_by_user_id <> auth.uid() then
+    raise exception 'updated_by_user_id can only be set to the current user';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_parking_location_update_trigger on parking_locations;
+create trigger enforce_parking_location_update_trigger
+  before update on parking_locations
+  for each row execute procedure enforce_parking_location_update();
 
 -- ------------------------------------------------------------
 -- STORAGE: parking photos (private bucket, one image per car)

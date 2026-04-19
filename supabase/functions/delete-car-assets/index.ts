@@ -1,6 +1,26 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 Deno.serve(async (req) => {
+  if (!WEBHOOK_SECRET) {
+    return new Response('server misconfigured', { status: 500 });
+  }
+
+  const provided = req.headers.get('x-webhook-secret') ?? '';
+  if (!timingSafeEqual(provided, WEBHOOK_SECRET)) {
+    return new Response('unauthorized', { status: 401 });
+  }
+
   const payload = await req.json();
 
   if (payload.type !== 'DELETE' || payload.table !== 'cars') {
