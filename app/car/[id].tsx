@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
-  Share,
   Platform,
   Linking,
 } from 'react-native';
@@ -220,7 +219,8 @@ export default function CarDetailScreen() {
   }
 
   async function handlePickImage() {
-    Alert.alert('Add Photo', 'Choose a source', [
+    const hasPhoto = !!imageUrl;
+    Alert.alert(hasPhoto ? 'Change Photo' : 'Add Photo', 'Choose a source', [
       {
         text: 'Camera',
         onPress: () => launchPicker('camera'),
@@ -229,8 +229,40 @@ export default function CarDetailScreen() {
         text: 'Photo Library',
         onPress: () => launchPicker('library'),
       },
+      ...(hasPhoto
+        ? [{
+            text: 'Remove Photo',
+            style: 'destructive' as const,
+            onPress: handleRemoveImage,
+          }]
+        : []),
       { text: 'Cancel', style: 'cancel' },
     ]);
+  }
+
+  async function handleRemoveImage() {
+    const path = car?.parking_locations?.image_path;
+    if (!path) return;
+
+    setUploadingImage(true);
+    try {
+      const { error: storageError } = await supabase.storage
+        .from('parking-images')
+        .remove([path]);
+      if (storageError) throw storageError;
+
+      const { error: dbError } = await supabase
+        .from('parking_locations')
+        .update({ image_path: null })
+        .eq('car_id', id);
+      if (dbError) throw dbError;
+
+      await fetchCar();
+    } catch (e: any) {
+      Alert.alert('Remove Failed', e?.message ?? 'Could not remove the photo.');
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   async function launchPicker(source: 'camera' | 'library') {
@@ -388,15 +420,6 @@ export default function CarDetailScreen() {
     );
   }
 
-  async function handleShareShortcut() {
-    const link = `wheredwepark://car/${id}`;
-    await Share.share(
-      Platform.OS === 'ios'
-        ? { url: link, title: `Open ${car?.name ?? 'vehicle'} in Where'd We Park` }
-        : { message: link, title: `Open ${car?.name ?? 'vehicle'} in Where'd We Park` }
-    );
-  }
-
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleString(undefined, {
       month: 'short',
@@ -434,7 +457,7 @@ export default function CarDetailScreen() {
         options={{
           title: car.name,
           headerRight: isOwner ? () => (
-            <TouchableOpacity onPress={openEditModal} style={{ marginRight: 16 }}>
+            <TouchableOpacity onPress={openEditModal}>
               <Text style={{ color: '#2563EB', fontSize: 22, fontWeight: '400' }}>Edit</Text>
             </TouchableOpacity>
           ) : undefined,
@@ -554,13 +577,6 @@ export default function CarDetailScreen() {
               <Text style={styles.leaveButtonText}>Leave Vehicle</Text>
             </TouchableOpacity>
           )}
-
-          <TouchableOpacity
-            style={styles.shareButton}
-            onPress={handleShareShortcut}
-          >
-            <Text style={styles.shareButtonText}>Add Home Screen Shortcut</Text>
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
 
