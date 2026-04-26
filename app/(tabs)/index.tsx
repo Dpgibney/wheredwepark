@@ -20,20 +20,11 @@ type ParkingLocation = {
   updated_at: string;
 };
 
-type VehicleType = 'car' | 'bike' | 'motorcycle';
-
-const VEHICLE_EMOJI: Record<VehicleType, string> = {
-  car: '🚗',
-  bike: '🚲',
-  motorcycle: '🏍️',
-};
-
 type Car = {
   id: string;
   name: string;
   license_plate: string | null;
   owner_id: string;
-  vehicle_type: VehicleType;
   emoji: string | null;
   parking_locations: ParkingLocation | null;
 };
@@ -43,7 +34,6 @@ type PendingInvite = {
   car_id: string;
   cars: {
     name: string;
-    vehicle_type: VehicleType;
     emoji: string | null;
     profiles: { display_name: string | null; email: string } | null;
   } | null;
@@ -74,7 +64,7 @@ export default function HomeScreen() {
 
     const { data, error } = await supabase
       .from('cars')
-      .select('id, name, license_plate, owner_id, vehicle_type, emoji, parking_locations(latitude, longitude, updated_at)')
+      .select('id, name, license_plate, owner_id, emoji, parking_locations(latitude, longitude, updated_at)')
       .order('created_at', { ascending: false });
 
     if (error) Alert.alert('Error', error.message);
@@ -87,7 +77,7 @@ export default function HomeScreen() {
 
     const { data, error } = await supabase
       .from('car_shares')
-      .select('id, car_id, cars(name, vehicle_type, emoji, profiles(display_name, email))')
+      .select('id, car_id, cars(name, emoji, profiles(display_name, email))')
       .eq('shared_with_user_id', user.id)
       .eq('status', 'pending');
 
@@ -215,7 +205,7 @@ export default function HomeScreen() {
               return (
                 <View key={invite.id} style={styles.inviteCard}>
                   <Text style={styles.inviteName}>
-                    {vehicle?.emoji ?? VEHICLE_EMOJI[vehicle?.vehicle_type ?? 'car']} {vehicle?.name ?? 'A vehicle'}
+                    {vehicle?.emoji ?? '🚗'} {vehicle?.name ?? 'A vehicle'}
                   </Text>
                   <Text style={styles.inviteSubtitle}>Shared by {ownerName}</Text>
                   <View style={styles.inviteActions}>
@@ -257,7 +247,7 @@ export default function HomeScreen() {
           >
             <View style={styles.cardLeft}>
               <Text style={styles.carName}>
-                {item.emoji ?? VEHICLE_EMOJI[item.vehicle_type] ?? '🚗'} {item.name}
+                {item.emoji ?? '🚗'} {item.name}
               </Text>
               {item.license_plate && (
                 <Text style={styles.plate}>{item.license_plate}</Text>

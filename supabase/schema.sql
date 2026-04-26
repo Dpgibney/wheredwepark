@@ -33,7 +33,6 @@ create table cars (
   owner_id      uuid references profiles(id) on delete cascade not null,
   name          text not null check (char_length(name) <= 100),
   license_plate text check (char_length(license_plate) <= 20),
-  vehicle_type  text not null default 'car' check (vehicle_type in ('car', 'bike', 'motorcycle')),
   created_at    timestamptz default now() not null
 );
 
