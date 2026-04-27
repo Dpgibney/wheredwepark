@@ -12,9 +12,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,15 +24,15 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!displayName || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      Alert.alert(t('common.error'), t('register.fillAllFields'));
       return;
     }
     if (displayName.length > 100) {
-      Alert.alert('Error', 'Display name must be 100 characters or fewer.');
+      Alert.alert(t('common.error'), t('register.displayNameTooLong'));
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters.');
+      Alert.alert(t('common.error'), t('register.passwordTooShort'));
       return;
     }
 
@@ -45,7 +47,7 @@ export default function RegisterScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Registration Failed', error.message);
+      Alert.alert(t('register.registrationFailed'), error.message);
     }
     // On success, onAuthStateChange in _layout.tsx redirects to app
   }
@@ -59,12 +61,12 @@ export default function RegisterScreen() {
         contentContainerStyle={styles.inner}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Get started with Where'd We Park</Text>
+        <Text style={styles.title}>{t('register.title')}</Text>
+        <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Display Name"
+          placeholder={t('register.displayNamePlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={displayName}
           onChangeText={setDisplayName}
@@ -74,7 +76,7 @@ export default function RegisterScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={t('register.emailPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={email}
           onChangeText={setEmail}
@@ -85,7 +87,7 @@ export default function RegisterScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Password (min. 8 characters)"
+          placeholder={t('register.passwordPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={password}
           onChangeText={setPassword}
@@ -100,14 +102,14 @@ export default function RegisterScreen() {
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>Create Account</Text>
+            : <Text style={styles.buttonText}>{t('register.createAccount')}</Text>
           }
         </TouchableOpacity>
 
         <Link href="/(auth)/login" asChild>
           <TouchableOpacity style={styles.linkButton}>
             <Text style={styles.linkText}>
-              Already have an account? <Text style={styles.linkTextBold}>Sign In</Text>
+              {t('register.alreadyHaveAccount')}<Text style={styles.linkTextBold}>{t('register.signIn')}</Text>
             </Text>
           </TouchableOpacity>
         </Link>

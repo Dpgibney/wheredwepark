@@ -2,10 +2,12 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
+import { useTranslation } from 'react-i18next';
 import AdBanner from '@/components/AdBanner';
 
 export default function TabLayout() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -20,7 +22,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'My Vehicles',
+          title: t('layout.myVehicles'),
           tabBarIcon: ({ color, size }) => <Ionicons name="car" size={size} color={color} />,
           headerRight: () => (
             <TouchableOpacity
@@ -35,7 +37,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('layout.settings'),
           tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
         }}
       />

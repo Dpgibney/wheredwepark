@@ -11,16 +11,18 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Link } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter your email and password.');
+      Alert.alert(t('common.error'), t('login.missingFields'));
       return;
     }
 
@@ -29,7 +31,7 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Login Failed', error.message);
+      Alert.alert(t('login.loginFailed'), error.message);
     }
     // On success, the auth state change in _layout.tsx redirects automatically
   }
@@ -40,12 +42,12 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.inner}>
-        <Text style={styles.title}>Where'd We Park?</Text>
-        <Text style={styles.subtitle}>Sign in to your account</Text>
+        <Text style={styles.title}>{t('login.title')}</Text>
+        <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={t('login.emailPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={email}
           onChangeText={setEmail}
@@ -56,7 +58,7 @@ export default function LoginScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder={t('login.passwordPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={password}
           onChangeText={setPassword}
@@ -71,14 +73,14 @@ export default function LoginScreen() {
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>Sign In</Text>
+            : <Text style={styles.buttonText}>{t('login.signIn')}</Text>
           }
         </TouchableOpacity>
 
         <Link href="/(auth)/register" asChild>
           <TouchableOpacity style={styles.linkButton}>
             <Text style={styles.linkText}>
-              Don't have an account? <Text style={styles.linkTextBold}>Sign Up</Text>
+              {t('login.noAccount')}<Text style={styles.linkTextBold}>{t('login.signUp')}</Text>
             </Text>
           </TouchableOpacity>
         </Link>

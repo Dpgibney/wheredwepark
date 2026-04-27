@@ -3,13 +3,16 @@ import { ActivityIndicator, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import '@/lib/i18n';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const segments = useSegments();
+  const { t } = useTranslation();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -55,7 +58,7 @@ export default function RootLayout() {
           options={{
             presentation: 'modal',
             headerShown: true,
-            title: 'Add Vehicle',
+            title: t('layout.addVehicle'),
             headerTintColor: '#2563EB',
           }}
         />
@@ -65,7 +68,7 @@ export default function RootLayout() {
             headerShown: true,
             headerTintColor: '#2563EB',
             title: '',
-            headerBackTitle: 'Vehicles',
+            headerBackTitle: t('layout.vehicles'),
           }}
         />
         <Stack.Screen
@@ -73,7 +76,7 @@ export default function RootLayout() {
           options={{
             headerShown: true,
             headerTintColor: '#2563EB',
-            title: 'Manage Sharing',
+            title: t('layout.manageSharing'),
           }}
         />
       </Stack>

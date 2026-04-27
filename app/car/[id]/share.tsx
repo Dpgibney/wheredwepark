@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 
 type Share = {
@@ -26,6 +27,7 @@ type Share = {
 
 export default function ShareScreen() {
   const { id: carId } = useLocalSearchParams<{ id: string }>();
+  const { t } = useTranslation();
 
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +46,7 @@ export default function ShareScreen() {
       .order('created_at', { ascending: true });
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
       setShares(data ?? []);
     }
@@ -62,13 +64,13 @@ export default function ShareScreen() {
 
     if (lookupError || !profile) {
       setEmail('');
-      Alert.alert('Invite Sent', 'An invite has been sent to that user if they have an account.');
+      Alert.alert(t('share.inviteSent'), t('share.inviteSentMessage'));
       return;
     }
 
     const alreadyShared = shares.some(s => s.shared_with_user_id === profile.id);
     if (alreadyShared) {
-      Alert.alert('Already Invited', 'This vehicle has already been shared with that user.');
+      Alert.alert(t('share.alreadyInvited'), t('share.alreadyInvitedMessage'));
       return;
     }
 
@@ -79,10 +81,10 @@ export default function ShareScreen() {
     setAdding(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
       setEmail('');
-      Alert.alert('Invite Sent', 'An invite has been sent to that user if they have an account.');
+      Alert.alert(t('share.inviteSent'), t('share.inviteSentMessage'));
       fetchShares();
     }
   }
@@ -92,14 +94,14 @@ export default function ShareScreen() {
     const name = profile?.display_name ?? profile?.email ?? 'this user';
     const isPending = share.status === 'pending';
     Alert.alert(
-      isPending ? 'Cancel Invite' : 'Remove Access',
+      isPending ? t('share.cancelInvite') : t('share.removeAccess'),
       isPending
-        ? `Cancel the invite for ${name}?`
-        : `Remove ${name}'s access to this vehicle?`,
+        ? t('share.cancelInviteConfirm', { name })
+        : t('share.removeAccessConfirm', { name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('share.cancel'), style: 'cancel' },
         {
-          text: isPending ? 'Cancel Invite' : 'Remove',
+          text: isPending ? t('share.cancelInvite') : t('share.remove'),
           style: 'destructive',
           onPress: async () => {
             const { error } = await supabase
@@ -107,7 +109,7 @@ export default function ShareScreen() {
               .delete()
               .eq('id', share.id);
             if (error) {
-              Alert.alert('Error', error.message);
+              Alert.alert(t('common.error'), error.message);
             } else {
               setShares(prev => prev.filter(s => s.id !== share.id));
             }
@@ -127,11 +129,11 @@ export default function ShareScreen() {
     >
       {/* Add by email */}
       <View style={styles.addSection}>
-        <Text style={styles.sectionTitle}>Send Invite</Text>
+        <Text style={styles.sectionTitle}>{t('share.sendInvite')}</Text>
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
-            placeholder="Email address"
+            placeholder={t('share.emailPlaceholder')}
             placeholderTextColor="#9CA3AF"
             value={email}
             onChangeText={setEmail}
@@ -147,7 +149,7 @@ export default function ShareScreen() {
           >
             {adding
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.addButtonText}>Send</Text>
+              : <Text style={styles.addButtonText}>{t('share.send')}</Text>
             }
           </TouchableOpacity>
         </View>
@@ -163,7 +165,7 @@ export default function ShareScreen() {
             ListHeaderComponent={
               <>
                 {pendingShares.length > 0 && (
-                  <Text style={styles.sectionTitle}>Pending</Text>
+                  <Text style={styles.sectionTitle}>{t('share.pending')}</Text>
                 )}
               </>
             }
@@ -178,7 +180,7 @@ export default function ShareScreen() {
                 <>
                   {showAcceptedHeader && (
                     <Text style={[styles.sectionTitle, { marginTop: pendingShares.length > 0 ? 20 : 0 }]}>
-                      Has Access
+                      {t('share.hasAccess')}
                     </Text>
                   )}
                   <View style={[styles.shareRow, isPending && styles.shareRowPending]}>
@@ -189,7 +191,7 @@ export default function ShareScreen() {
                         </Text>
                         {isPending && (
                           <View style={styles.pendingBadge}>
-                            <Text style={styles.pendingBadgeText}>Pending</Text>
+                            <Text style={styles.pendingBadgeText}>{t('share.pending')}</Text>
                           </View>
                         )}
                       </View>
@@ -200,7 +202,7 @@ export default function ShareScreen() {
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Text style={styles.removeText}>
-                        {isPending ? 'Cancel' : 'Remove'}
+                        {isPending ? t('share.cancel') : t('share.remove')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -208,7 +210,7 @@ export default function ShareScreen() {
               );
             }}
             ListEmptyComponent={
-              <Text style={styles.emptyText}>No invites sent yet.</Text>
+              <Text style={styles.emptyText}>{t('share.noInvites')}</Text>
             }
           />
         )

@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 
 type ParkingLocation = {
@@ -47,6 +48,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [savingLocationId, setSavingLocationId] = useState<string | null>(null);
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -67,7 +69,7 @@ export default function HomeScreen() {
       .select('id, name, license_plate, owner_id, emoji, parking_locations(latitude, longitude, updated_at)')
       .order('created_at', { ascending: false });
 
-    if (error) Alert.alert('Error', error.message);
+    if (error) Alert.alert(t('common.error'), error.message);
     else setCars(data ?? []);
   }
 
@@ -113,12 +115,12 @@ export default function HomeScreen() {
 
   async function handleDeclineInvite(invite: PendingInvite) {
     Alert.alert(
-      'Decline Invite',
-      `Decline access to "${invite.cars?.[0]?.name ?? 'this vehicle'}"?`,
+      t('home.declineInvite'),
+      t('home.declineConfirm', { name: invite.cars?.name ?? 'this vehicle' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Decline',
+          text: t('home.decline'),
           style: 'destructive',
           onPress: async () => {
             const { error } = await supabase
@@ -138,7 +140,7 @@ export default function HomeScreen() {
   async function handleQuickUpdateLocation(carId: string) {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Location permission is required to save your parking spot.');
+      Alert.alert(t('home.permissionDenied'), t('home.locationPermissionRequired'));
       return;
     }
 
@@ -159,12 +161,12 @@ export default function HomeScreen() {
       );
 
       if (error) {
-        Alert.alert('Error', error.message);
+        Alert.alert(t('common.error'), error.message);
       } else {
         await fetchCars();
       }
     } catch {
-      Alert.alert('Error', 'Could not get your current location. Make sure Location Services are enabled.');
+      Alert.alert(t('common.error'), t('home.locationError'));
     } finally {
       setSavingLocationId(null);
     }
@@ -173,10 +175,10 @@ export default function HomeScreen() {
   function formatLastParked(updatedAt: string) {
     const diffMs = Date.now() - new Date(updatedAt).getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 60) return t('home.timeAgoMinutes', { count: diffMins });
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
+    if (diffHours < 24) return t('home.timeAgoHours', { count: diffHours });
+    return t('home.timeAgoDays', { count: Math.floor(diffHours / 24) });
   }
 
   if (loading) {
@@ -197,7 +199,7 @@ export default function HomeScreen() {
       ListHeaderComponent={
         pendingInvites.length > 0 ? (
           <View style={styles.invitesSection}>
-            <Text style={styles.sectionLabel}>Pending Invites</Text>
+            <Text style={styles.sectionLabel}>{t('home.pendingInvites')}</Text>
             {pendingInvites.map(invite => {
               const vehicle = invite.cars;
               const owner = vehicle?.profiles;
@@ -207,19 +209,19 @@ export default function HomeScreen() {
                   <Text style={styles.inviteName}>
                     {vehicle?.emoji ?? '🚗'} {vehicle?.name ?? 'A vehicle'}
                   </Text>
-                  <Text style={styles.inviteSubtitle}>Shared by {ownerName}</Text>
+                  <Text style={styles.inviteSubtitle}>{t('home.sharedBy', { name: ownerName })}</Text>
                   <View style={styles.inviteActions}>
                     <TouchableOpacity
                       style={styles.declineButton}
                       onPress={() => handleDeclineInvite(invite)}
                     >
-                      <Text style={styles.declineText}>Decline</Text>
+                      <Text style={styles.declineText}>{t('home.decline')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.acceptButton}
                       onPress={() => handleAcceptInvite(invite)}
                     >
-                      <Text style={styles.acceptText}>Accept</Text>
+                      <Text style={styles.acceptText}>{t('home.accept')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -231,8 +233,8 @@ export default function HomeScreen() {
       ListEmptyComponent={
         pendingInvites.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No vehicles yet</Text>
-            <Text style={styles.emptySubtitle}>Tap + to add your first vehicle.</Text>
+            <Text style={styles.emptyTitle}>{t('home.noVehiclesYet')}</Text>
+            <Text style={styles.emptySubtitle}>{t('home.tapToAdd')}</Text>
           </View>
         ) : null
       }
@@ -254,13 +256,13 @@ export default function HomeScreen() {
               )}
               {loc ? (
                 <Text style={styles.parkedText}>
-                  Last parked {formatLastParked(loc.updated_at)}
+                  {t('home.lastParked', { time: formatLastParked(loc.updated_at) })}
                 </Text>
               ) : (
-                <Text style={styles.noLocationText}>No location saved yet</Text>
+                <Text style={styles.noLocationText}>{t('home.noLocationSaved')}</Text>
               )}
               {!isOwner && (
-                <Text style={styles.sharedBadge}>Shared with you</Text>
+                <Text style={styles.sharedBadge}>{t('home.sharedWithYou')}</Text>
               )}
             </View>
             <View style={styles.cardRight}>

@@ -18,6 +18,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 
 const VEHICLE_EMOJIS = [
@@ -44,6 +45,7 @@ type CarDetail = {
 export default function CarDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [car, setCar] = useState<CarDetail | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -110,7 +112,7 @@ export default function CarDetailScreen() {
       .single();
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
       setLoading(false);
       return;
     }
@@ -141,7 +143,7 @@ export default function CarDetailScreen() {
   async function handleSaveLocation() {
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Location permission is required to save your parking spot.');
+      Alert.alert(t('carDetail.permissionDenied'), t('carDetail.locationPermissionRequired'));
       return;
     }
 
@@ -161,12 +163,12 @@ export default function CarDetailScreen() {
       );
 
       if (error) {
-        Alert.alert('Error', error.message);
+        Alert.alert(t('common.error'), error.message);
       } else {
         await fetchCar();
       }
     } catch {
-      Alert.alert('Error', 'Could not get your current location. Make sure Location Services are enabled.');
+      Alert.alert(t('common.error'), t('carDetail.locationError'));
     } finally {
       setSavingLocation(false);
     }
@@ -174,12 +176,12 @@ export default function CarDetailScreen() {
 
   async function handleLeaveVehicle() {
     Alert.alert(
-      'Leave Vehicle',
-      `Remove yourself from ${car?.name ?? 'this vehicle'}? You will lose access.`,
+      t('carDetail.leaveVehicle'),
+      t('carDetail.leaveVehicleConfirm', { name: car?.name ?? 'this vehicle' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Leave',
+          text: t('carDetail.leave'),
           style: 'destructive',
           onPress: async () => {
             // Get user fresh to avoid relying on potentially-null state
@@ -193,9 +195,9 @@ export default function CarDetailScreen() {
               .eq('shared_with_user_id', user.id);
 
             if (error) {
-              Alert.alert('Error', error.message);
+              Alert.alert(t('common.error'), error.message);
             } else if (!count || count === 0) {
-              Alert.alert('Error', 'Could not remove access. Make sure the required database policy has been applied.');
+              Alert.alert(t('common.error'), t('carDetail.removeAccessError'));
             } else {
               router.replace('/(tabs)');
             }
@@ -207,23 +209,23 @@ export default function CarDetailScreen() {
 
   async function handlePickImage() {
     const hasPhoto = !!imageUrl;
-    Alert.alert(hasPhoto ? 'Change Photo' : 'Add Photo', 'Choose a source', [
+    Alert.alert(hasPhoto ? t('carDetail.changePhoto') : t('carDetail.addPhoto'), t('carDetail.chooseSource'), [
       {
-        text: 'Camera',
+        text: t('carDetail.camera'),
         onPress: () => launchPicker('camera'),
       },
       {
-        text: 'Photo Library',
+        text: t('carDetail.photoLibrary'),
         onPress: () => launchPicker('library'),
       },
       ...(hasPhoto
         ? [{
-            text: 'Remove Photo',
+            text: t('carDetail.removePhoto'),
             style: 'destructive' as const,
             onPress: handleRemoveImage,
           }]
         : []),
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   }
 
@@ -246,7 +248,7 @@ export default function CarDetailScreen() {
 
       await fetchCar();
     } catch (e: any) {
-      Alert.alert('Remove Failed', e?.message ?? 'Could not remove the photo.');
+      Alert.alert(t('carDetail.removeFailed'), e?.message ?? t('carDetail.removePhotoError'));
     } finally {
       setUploadingImage(false);
     }
@@ -258,14 +260,14 @@ export default function CarDetailScreen() {
     if (source === 'camera') {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Camera access is required to take a photo.');
+        Alert.alert(t('carDetail.permissionDenied'), t('carDetail.cameraPermissionRequired'));
         return;
       }
       result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.5 });
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Photo library access is required.');
+        Alert.alert(t('carDetail.permissionDenied'), t('carDetail.libraryPermissionRequired'));
         return;
       }
       result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, quality: 0.5 });
@@ -299,7 +301,7 @@ export default function CarDetailScreen() {
 
       await fetchCar();
     } catch (e: any) {
-      Alert.alert('Upload Failed', e?.message ?? 'Could not upload the photo.');
+      Alert.alert(t('carDetail.uploadFailed'), e?.message ?? t('carDetail.uploadPhotoError'));
     } finally {
       setUploadingImage(false);
     }
@@ -313,7 +315,7 @@ export default function CarDetailScreen() {
       .update({ notes: text || null })
       .eq('car_id', id);
     if (!error) savedNoteRef.current = text;
-    else Alert.alert('Error', error.message);
+    else Alert.alert(t('common.error'), error.message);
     setSavingNote(false);
   }
 
@@ -326,16 +328,16 @@ export default function CarDetailScreen() {
 
   async function handleDeleteCar() {
     Alert.alert(
-      'Remove Vehicle',
-      `Remove "${car!.name}" from your Vehicles?`,
+      t('carDetail.removeVehicle'),
+      t('carDetail.removeVehicleConfirm', { name: car!.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Remove',
+          text: t('carDetail.remove'),
           style: 'destructive',
           onPress: async () => {
             const { error } = await supabase.from('cars').delete().eq('id', id);
-            if (error) Alert.alert('Error', error.message);
+            if (error) Alert.alert(t('common.error'), error.message);
             else router.back();
           },
         },
@@ -352,7 +354,7 @@ export default function CarDetailScreen() {
       .update({ name: trimmedName, license_plate: editPlate.trim() || null, emoji: editEmoji })
       .eq('id', id);
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
       setCar(prev => prev ? { ...prev, name: trimmedName, license_plate: editPlate.trim() || null, emoji: editEmoji } : prev);
       setEditModalVisible(false);
@@ -368,16 +370,16 @@ export default function CarDetailScreen() {
       try {
         await Linking.openURL(`geo:${latitude},${longitude}?q=${latitude},${longitude}`);
       } catch {
-        Alert.alert('Error', 'Could not open a maps app.');
+        Alert.alert(t('common.error'), t('carDetail.mapsOpenError'));
       }
       return;
     }
 
     // iOS: detect installed map apps and offer a choice
     const candidates = [
-      { text: 'Apple Maps', url: `maps://?daddr=${latitude},${longitude}` },
-      { text: 'Google Maps', url: `comgooglemaps://?daddr=${latitude},${longitude}&directionsmode=driving` },
-      { text: 'Waze', url: `waze://?ll=${latitude},${longitude}&navigate=yes` },
+      { text: t('carDetail.appleMaps'), url: `maps://?daddr=${latitude},${longitude}` },
+      { text: t('carDetail.googleMaps'), url: `comgooglemaps://?daddr=${latitude},${longitude}&directionsmode=driving` },
+      { text: t('carDetail.waze'), url: `waze://?ll=${latitude},${longitude}&navigate=yes` },
     ];
 
     const available: { text: string; url: string }[] = [];
@@ -385,22 +387,22 @@ export default function CarDetailScreen() {
       if (await Linking.canOpenURL(app.url)) available.push(app);
     }
     // Web fallback always works
-    available.push({ text: 'Google Maps (Web)', url: `https://maps.google.com/?daddr=${latitude},${longitude}` });
+    available.push({ text: t('carDetail.googleMapsWeb'), url: `https://maps.google.com/?daddr=${latitude},${longitude}` });
 
     const openMap = async (url: string) => {
       try {
         await Linking.openURL(url);
       } catch {
-        Alert.alert('Error', 'Could not open that maps app.');
+        Alert.alert(t('common.error'), t('carDetail.mapsAppOpenError'));
       }
     };
 
     Alert.alert(
-      'Get Directions',
-      'Open in:',
+      t('carDetail.getDirections'),
+      t('carDetail.openIn'),
       [
         ...available.map(app => ({ text: app.text, onPress: () => openMap(app.url) })),
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   }
@@ -425,7 +427,7 @@ export default function CarDetailScreen() {
   if (!car) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>Vehicle not found.</Text>
+        <Text style={styles.errorText}>{t('carDetail.vehicleNotFound')}</Text>
       </View>
     );
   }
@@ -443,7 +445,7 @@ export default function CarDetailScreen() {
           title: car.name,
           headerRight: isOwner ? () => (
             <TouchableOpacity onPress={openEditModal}>
-              <Text style={{ color: '#2563EB', fontSize: 22, fontWeight: '400' }}>Edit</Text>
+              <Text style={{ color: '#2563EB', fontSize: 22, fontWeight: '400' }}>{t('carDetail.edit')}</Text>
             </TouchableOpacity>
           ) : undefined,
         }}
@@ -462,26 +464,26 @@ export default function CarDetailScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.card}>
         <ScrollView ref={scrollViewRef} style={styles.cardScroll} contentContainerStyle={styles.cardContent}>
           {car.license_plate && (
-            <Text style={styles.plate}>License plate: {car.license_plate}</Text>
+            <Text style={styles.plate}>{t('carDetail.licensePlate', { plate: car.license_plate })}</Text>
           )}
 
           {loc ? (
             <View style={styles.locationInfo}>
               <View style={styles.locationRow}>
                 <View style={styles.locationText}>
-                  <Text style={styles.locationLabel}>Last parked</Text>
+                  <Text style={styles.locationLabel}>{t('carDetail.lastParked')}</Text>
                   <Text style={styles.locationDate}>{formatDate(loc.updated_at)}</Text>
                   {loc.profiles?.display_name && (
-                    <Text style={styles.locationBy}>by {loc.profiles.display_name}</Text>
+                    <Text style={styles.locationBy}>{t('carDetail.by', { name: loc.profiles.display_name })}</Text>
                   )}
                 </View>
                 <TouchableOpacity style={styles.directionsButton} onPress={handleDirections}>
-                  <Text style={styles.directionsButtonText}>Directions</Text>
+                  <Text style={styles.directionsButtonText}>{t('carDetail.directions')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            <Text style={styles.noLocation}>No parking location saved yet.</Text>
+            <Text style={styles.noLocation}>{t('carDetail.noLocationSaved')}</Text>
           )}
 
           {/* Photo + note section — only shown once a location exists */}
@@ -499,7 +501,7 @@ export default function CarDetailScreen() {
                   >
                     {uploadingImage
                       ? <ActivityIndicator color="#2563EB" size="small" />
-                      : <Text style={styles.photoButtonText}>Change Photo</Text>
+                      : <Text style={styles.photoButtonText}>{t('carDetail.changePhoto')}</Text>
                     }
                   </TouchableOpacity>
                 </>
@@ -511,7 +513,7 @@ export default function CarDetailScreen() {
                 >
                   {uploadingImage
                     ? <ActivityIndicator color="#6B7280" size="small" />
-                    : <Text style={styles.addPhotoText}>+ Add Parking Photo</Text>
+                    : <Text style={styles.addPhotoText}>{t('carDetail.addParkingPhoto')}</Text>
                   }
                 </TouchableOpacity>
               )}
@@ -522,7 +524,7 @@ export default function CarDetailScreen() {
                   value={noteText}
                   onChangeText={setNoteText}
                   onFocus={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-                  placeholder="Add a note about this parking spot…"
+                  placeholder={t('carDetail.notePlaceholder')}
                   placeholderTextColor="#9CA3AF"
                   multiline
                   maxLength={500}
@@ -542,7 +544,7 @@ export default function CarDetailScreen() {
             {savingLocation
               ? <ActivityIndicator color="#fff" />
               : <Text style={styles.buttonText}>
-                  {loc ? 'Update Parking Location' : 'Save Parking Location'}
+                  {loc ? t('carDetail.updateParkingLocation') : t('carDetail.saveParkingLocation')}
                 </Text>
             }
           </TouchableOpacity>
@@ -552,14 +554,14 @@ export default function CarDetailScreen() {
               style={styles.shareButton}
               onPress={() => router.push(`/car/${id}/share`)}
             >
-              <Text style={styles.shareButtonText}>Manage Sharing</Text>
+              <Text style={styles.shareButtonText}>{t('carDetail.manageSharing')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={styles.shareButton}
               onPress={handleLeaveVehicle}
             >
-              <Text style={styles.leaveButtonText}>Leave Vehicle</Text>
+              <Text style={styles.leaveButtonText}>{t('carDetail.leaveVehicle')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -571,10 +573,10 @@ export default function CarDetailScreen() {
           style={styles.editBackdrop}
         >
           <View style={styles.editSheet}>
-            <Text style={styles.editTitle}>Edit Vehicle</Text>
+            <Text style={styles.editTitle}>{t('carDetail.editVehicle')}</Text>
 
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.editScrollContent}>
-              <Text style={styles.editLabel}>Icon</Text>
+              <Text style={styles.editLabel}>{t('carDetail.icon')}</Text>
               <View style={styles.emojiGrid}>
                 {VEHICLE_EMOJIS.map(e => (
                   <TouchableOpacity
@@ -587,22 +589,22 @@ export default function CarDetailScreen() {
                 ))}
               </View>
 
-              <Text style={styles.editLabel}>Name</Text>
+              <Text style={styles.editLabel}>{t('carDetail.name')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={editName}
                 onChangeText={setEditName}
-                placeholder="Vehicle name"
+                placeholder={t('carDetail.vehicleNamePlaceholder')}
                 placeholderTextColor="#9CA3AF"
                 maxLength={100}
               />
 
-              <Text style={styles.editLabel}>License Plate</Text>
+              <Text style={styles.editLabel}>{t('carDetail.licensePlateLabel')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={editPlate}
                 onChangeText={setEditPlate}
-                placeholder="Optional"
+                placeholder={t('carDetail.optional')}
                 placeholderTextColor="#9CA3AF"
                 maxLength={20}
                 autoCapitalize="characters"
@@ -615,7 +617,7 @@ export default function CarDetailScreen() {
               >
                 {savingEdit
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.buttonText}>Save</Text>
+                  : <Text style={styles.buttonText}>{t('common.save')}</Text>
                 }
               </TouchableOpacity>
 
@@ -624,7 +626,7 @@ export default function CarDetailScreen() {
                 onPress={() => setEditModalVisible(false)}
                 disabled={savingEdit}
               >
-                <Text style={styles.shareButtonText}>Cancel</Text>
+                <Text style={styles.shareButtonText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -632,7 +634,7 @@ export default function CarDetailScreen() {
                 onPress={handleDeleteCar}
                 disabled={savingEdit}
               >
-                <Text style={[styles.shareButtonText, { color: '#DC2626' }]}>Delete Vehicle</Text>
+                <Text style={[styles.shareButtonText, { color: '#DC2626' }]}>{t('carDetail.deleteVehicle')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

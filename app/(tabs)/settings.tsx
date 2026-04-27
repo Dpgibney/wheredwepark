@@ -13,11 +13,13 @@ import {
   Animated,
   Linking,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 
 type ActiveSheet = 'password' | 'name' | null;
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -68,11 +70,11 @@ export default function SettingsScreen() {
 
   async function handleChangePassword() {
     if (newPassword.length < 8) {
-      Alert.alert('Too short', 'New password must be at least 8 characters.');
+      Alert.alert(t('settings.tooShort'), t('settings.passwordTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Mismatch', 'New passwords do not match.');
+      Alert.alert(t('settings.mismatch'), t('settings.passwordMismatch'));
       return;
     }
     setChangingPassword(true);
@@ -81,16 +83,16 @@ export default function SettingsScreen() {
       password: currentPassword,
     });
     if (signInError) {
-      Alert.alert('Incorrect Password', 'Your current password is incorrect.');
+      Alert.alert(t('settings.incorrectPassword'), t('settings.incorrectPasswordMessage'));
       setChangingPassword(false);
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setChangingPassword(false);
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
-      Alert.alert('Success', 'Your password has been updated.');
+      Alert.alert(t('settings.success'), t('settings.passwordUpdated'));
       closeSheet();
     }
   }
@@ -98,7 +100,7 @@ export default function SettingsScreen() {
   async function handleChangeName() {
     const trimmed = nameInput.trim();
     if (trimmed.length === 0) {
-      Alert.alert('Required', 'Name cannot be empty.');
+      Alert.alert(t('settings.required'), t('settings.nameEmpty'));
       return;
     }
     setChangingName(true);
@@ -108,10 +110,10 @@ export default function SettingsScreen() {
       .eq('id', userId!);
     setChangingName(false);
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
       setDisplayName(trimmed);
-      Alert.alert('Success', 'Your name has been updated.');
+      Alert.alert(t('settings.success'), t('settings.nameUpdated'));
       closeSheet();
     }
   }
@@ -140,22 +142,22 @@ export default function SettingsScreen() {
       {/* Actions */}
       <View style={styles.section}>
         <TouchableOpacity style={styles.rowButton} onPress={() => openSheet('name')}>
-          <Text style={styles.rowButtonText}>Change Name</Text>
+          <Text style={styles.rowButtonText}>{t('settings.changeName')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
         <TouchableOpacity style={styles.rowButton} onPress={() => openSheet('password')}>
-          <Text style={styles.rowButtonText}>Change Password</Text>
+          <Text style={styles.rowButtonText}>{t('settings.changePassword')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
         <TouchableOpacity
           style={styles.rowButton}
           onPress={() => Linking.openURL('https://doc-hosting.flycricket.io/wheredwepark-privacy-policy/84cadd06-966f-4e6c-bd3e-1eb6bd0c8a5d/privacy')}
         >
-          <Text style={styles.rowButtonText}>Privacy Policy</Text>
+          <Text style={styles.rowButtonText}>{t('settings.privacyPolicy')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
         <TouchableOpacity style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -169,35 +171,35 @@ export default function SettingsScreen() {
 
           {activeSheet === 'password' && (
             <Animated.View style={[styles.editSheet, { transform: [{ translateY: slideAnim }] }]}>
-              <Text style={styles.editTitle}>Change Password</Text>
+              <Text style={styles.editTitle}>{t('settings.changePassword')}</Text>
 
-              <Text style={styles.editLabel}>Current Password</Text>
+              <Text style={styles.editLabel}>{t('settings.currentPassword')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry
-                placeholder="Enter current password"
+                placeholder={t('settings.currentPasswordPlaceholder')}
                 autoCapitalize="none"
               />
 
-              <Text style={styles.editLabel}>New Password</Text>
+              <Text style={styles.editLabel}>{t('settings.newPassword')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry
-                placeholder="At least 8 characters"
+                placeholder={t('settings.newPasswordPlaceholder')}
                 autoCapitalize="none"
               />
 
-              <Text style={styles.editLabel}>Confirm New Password</Text>
+              <Text style={styles.editLabel}>{t('settings.confirmNewPassword')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
-                placeholder="Repeat new password"
+                placeholder={t('settings.confirmNewPasswordPlaceholder')}
                 autoCapitalize="none"
               />
 
@@ -209,26 +211,26 @@ export default function SettingsScreen() {
                 {changingPassword ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Update Password</Text>
+                  <Text style={styles.saveButtonText}>{t('settings.updatePassword')}</Text>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
-                <Text style={styles.cancelLinkText}>Cancel</Text>
+                <Text style={styles.cancelLinkText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </Animated.View>
           )}
 
           {activeSheet === 'name' && (
             <Animated.View style={[styles.editSheet, { transform: [{ translateY: slideAnim }] }]}>
-              <Text style={styles.editTitle}>Change Name</Text>
+              <Text style={styles.editTitle}>{t('settings.changeName')}</Text>
 
-              <Text style={styles.editLabel}>Display Name</Text>
+              <Text style={styles.editLabel}>{t('settings.displayName')}</Text>
               <TextInput
                 style={styles.editInput}
                 value={nameInput}
                 onChangeText={setNameInput}
-                placeholder="Your name"
+                placeholder={t('settings.displayNamePlaceholder')}
                 autoCapitalize="words"
                 autoFocus
               />
@@ -241,12 +243,12 @@ export default function SettingsScreen() {
                 {changingName ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Update Name</Text>
+                  <Text style={styles.saveButtonText}>{t('settings.updateName')}</Text>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
-                <Text style={styles.cancelLinkText}>Cancel</Text>
+                <Text style={styles.cancelLinkText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
             </Animated.View>
           )}

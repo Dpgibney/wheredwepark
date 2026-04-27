@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 
 const VEHICLE_EMOJIS = [
@@ -20,6 +21,7 @@ const VEHICLE_EMOJIS = [
 ];
 
 export default function AddCarScreen() {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [emoji, setEmoji] = useState(VEHICLE_EMOJIS[0]);
@@ -28,15 +30,15 @@ export default function AddCarScreen() {
 
   async function handleAdd() {
     if (!name.trim()) {
-      Alert.alert('Required', 'Please enter a vehicle name.');
+      Alert.alert(t('addCar.required'), t('addCar.nameEmpty'));
       return;
     }
     if (name.trim().length > 100) {
-      Alert.alert('Too Long', 'Vehicle name must be 100 characters or fewer.');
+      Alert.alert(t('addCar.tooLong'), t('addCar.vehicleNameTooLong'));
       return;
     }
     if (licensePlate.trim().length > 20) {
-      Alert.alert('Too Long', 'License plate must be 20 characters or fewer.');
+      Alert.alert(t('addCar.tooLong'), t('addCar.licensePlateTooLong'));
       return;
     }
 
@@ -51,7 +53,7 @@ export default function AddCarScreen() {
 
     if ((count ?? 0) >= 10) {
       setLoading(false);
-      Alert.alert('Limit Reached', 'You can only add up to 10 vehicles.');
+      Alert.alert(t('addCar.limitReached'), t('addCar.vehicleLimit'));
       return;
     }
 
@@ -65,7 +67,7 @@ export default function AddCarScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
       router.back();
     }
@@ -77,7 +79,7 @@ export default function AddCarScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>Icon</Text>
+        <Text style={styles.label}>{t('addCar.icon')}</Text>
         <View style={styles.emojiGrid}>
           {VEHICLE_EMOJIS.map(e => (
             <TouchableOpacity
@@ -90,10 +92,10 @@ export default function AddCarScreen() {
           ))}
         </View>
 
-        <Text style={styles.label}>Vehicle Name *</Text>
+        <Text style={styles.label}>{t('addCar.vehicleName')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. Honda Civic, Dad's Truck"
+          placeholder={t('addCar.vehicleNamePlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={name}
           onChangeText={setName}
@@ -101,10 +103,10 @@ export default function AddCarScreen() {
           returnKeyType="next"
         />
 
-        <Text style={styles.label}>License Plate</Text>
+        <Text style={styles.label}>{t('addCar.licensePlate')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. ABC 1234 (optional)"
+          placeholder={t('addCar.licensePlatePlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={licensePlate}
           onChangeText={setLicensePlate}
@@ -120,7 +122,7 @@ export default function AddCarScreen() {
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>Add Vehicle</Text>
+            : <Text style={styles.buttonText}>{t('addCar.addVehicle')}</Text>
           }
         </TouchableOpacity>
       </ScrollView>
