@@ -10,31 +10,47 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  async function handleLogin() {
-    if (!email || !password) {
-      Alert.alert(t('common.error'), t('login.missingFields'));
+  async function handleSend() {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      Alert.alert(t('common.error'), t('forgotPassword.missingEmail'));
       return;
     }
-
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+      redirectTo: 'wheredwepark://reset-password',
+    });
     setLoading(false);
-
     if (error) {
-      Alert.alert(t('login.loginFailed'), error.message);
+      Alert.alert(t('forgotPassword.errorTitle'), error.message);
+    } else {
+      setSent(true);
     }
-    // On success, the auth state change in _layout.tsx redirects automatically
+  }
+
+  if (sent) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.inner}>
+          <Text style={styles.title}>{t('forgotPassword.successTitle')}</Text>
+          <Text style={styles.subtitle}>{t('forgotPassword.successMessage')}</Text>
+          <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+            <Text style={styles.buttonText}>{t('forgotPassword.backToLogin')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -43,55 +59,37 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.inner}>
-        <Text style={styles.title}>{t('login.title')}</Text>
-        <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
+        <Text style={styles.title}>{t('forgotPassword.title')}</Text>
+        <Text style={styles.subtitle}>{t('forgotPassword.subtitle')}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder={t('login.emailPlaceholder')}
+          placeholder={t('forgotPassword.emailPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
           textContentType="emailAddress"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder={t('login.passwordPlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          textContentType="password"
+          autoFocus
+          returnKeyType="send"
+          onSubmitEditing={handleSend}
         />
 
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
+          onPress={handleSend}
           disabled={loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>{t('login.signIn')}</Text>
+            : <Text style={styles.buttonText}>{t('forgotPassword.sendButton')}</Text>
           }
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => router.push('/(auth)/forgot-password' as any)}
-        >
-          <Text style={styles.linkText}>{t('login.forgotPassword')}</Text>
+        <TouchableOpacity style={styles.linkButton} onPress={() => router.back()}>
+          <Text style={styles.linkText}>{t('forgotPassword.backToLogin')}</Text>
         </TouchableOpacity>
-
-        <Link href="/(auth)/register" asChild>
-          <TouchableOpacity style={styles.linkButton}>
-            <Text style={styles.linkText}>
-              {t('login.noAccount')}<Text style={styles.linkTextBold}>{t('login.signUp')}</Text>
-            </Text>
-          </TouchableOpacity>
-        </Link>
       </View>
     </KeyboardAvoidingView>
   );
@@ -115,10 +113,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#6B7280',
     textAlign: 'center',
     marginBottom: 32,
+    lineHeight: 22,
   },
   input: {
     backgroundColor: '#fff',
@@ -151,11 +150,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#6B7280',
-    fontSize: 15,
-  },
-  linkTextBold: {
     color: '#2563EB',
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

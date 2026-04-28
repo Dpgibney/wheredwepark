@@ -58,8 +58,36 @@
     "signIn": "Sign In",
     "noAccount": "Don't have an account? ",
     "signUp": "Sign Up",
+    "forgotPassword": "Forgot Password?",
     "missingFields": "Please enter your email and password.",
     "loginFailed": "Login Failed"
+  },
+  "forgotPassword": {
+    "title": "Reset Password",
+    "subtitle": "Enter your account email and we'll send you a reset link.",
+    "emailPlaceholder": "Email",
+    "sendButton": "Send Reset Email",
+    "backToLogin": "Back to Sign In",
+    "successTitle": "Check your inbox",
+    "successMessage": "If an account exists for that email, a password reset link has been sent.",
+    "missingEmail": "Please enter your email address.",
+    "errorTitle": "Request Failed"
+  },
+  "resetPassword": {
+    "title": "Set New Password",
+    "subtitle": "Choose a strong password for your account.",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "At least 8 characters",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Repeat new password",
+    "saveButton": "Set New Password",
+    "tooShort": "Too short",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "mismatch": "Mismatch",
+    "passwordMismatch": "Passwords do not match.",
+    "success": "Password updated",
+    "successMessage": "Your password has been updated. You're now signed in.",
+    "errorTitle": "Update Failed"
   },
   "register": {
     "title": "Create Account",
@@ -164,6 +192,8 @@
     "vehicles": "Vehicles",
     "manageSharing": "Manage Sharing",
     "myVehicles": "My Vehicles",
-    "settings": "Settings"
+    "settings": "Settings",
+    "forgotPassword": "Reset Password",
+    "resetPassword": "Set New Password"
   }
 }

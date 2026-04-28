@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Linking, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
@@ -27,10 +27,37 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Handle password-reset deep links (wheredwepark://reset-password#access_token=...&type=recovery)
+  useEffect(() => {
+    function handleUrl(url: string | null) {
+      if (!url) return;
+      const hash = url.split('#')[1];
+      if (!hash) return;
+      const params = new URLSearchParams(hash);
+      if (params.get('type') !== 'recovery') return;
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (!accessToken || !refreshToken) return;
+      supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ error }) => {
+          if (!error) router.replace('/reset-password' as any);
+        });
+    }
+
+    Linking.getInitialURL().then(handleUrl);
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    return () => sub.remove();
+  }, []);
+
   useEffect(() => {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const onResetPassword = (segments[0] as string) === 'reset-password';
+
+    // Never redirect away from the reset-password screen — it manages its own navigation
+    if (onResetPassword) return;
 
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');
@@ -53,6 +80,15 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="reset-password"
+          options={{
+            headerShown: true,
+            headerTintColor: '#2563EB',
+            title: t('layout.resetPassword'),
+            headerBackVisible: false,
+          }}
+        />
         <Stack.Screen
           name="add-car"
           options={{
