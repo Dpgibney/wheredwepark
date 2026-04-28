@@ -20,6 +20,8 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { shared } from '@/styles/shared';
+import { colors } from '@/constants/colors';
 
 const VEHICLE_EMOJIS = [
   '🚗','🚙','🚕','🏎️','🚓','🚑','🚒','🚐','🛻','🚌','🚎','🚚','🚛','🚜',
@@ -418,15 +420,15 @@ export default function CarDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View style={shared.centered}>
+        <ActivityIndicator size="large" color={colors.brand} />
       </View>
     );
   }
 
   if (!car) {
     return (
-      <View style={styles.centered}>
+      <View style={shared.centered}>
         <Text style={styles.errorText}>{t('carDetail.vehicleNotFound')}</Text>
       </View>
     );
@@ -439,13 +441,13 @@ export default function CarDetailScreen() {
     : userRegion ?? undefined;
 
   return (
-    <View style={styles.container}>
+    <View style={shared.container}>
       <Stack.Screen
         options={{
           title: car.name,
           headerRight: isOwner ? () => (
             <TouchableOpacity onPress={openEditModal}>
-              <Text style={{ color: '#2563EB', fontSize: 22, fontWeight: '400' }}>{t('carDetail.edit')}</Text>
+              <Text style={{ color: colors.brand, fontSize: 22, fontWeight: '400' }}>{t('carDetail.edit')}</Text>
             </TouchableOpacity>
           ) : undefined,
         }}
@@ -461,7 +463,7 @@ export default function CarDetailScreen() {
         )}
       </MapView>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.card}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.bottomCard}>
         <ScrollView ref={scrollViewRef} style={styles.cardScroll} contentContainerStyle={styles.cardContent}>
           {car.license_plate && (
             <Text style={styles.plate}>{t('carDetail.licensePlate', { plate: car.license_plate })}</Text>
@@ -500,19 +502,19 @@ export default function CarDetailScreen() {
                     disabled={uploadingImage}
                   >
                     {uploadingImage
-                      ? <ActivityIndicator color="#2563EB" size="small" />
+                      ? <ActivityIndicator color={colors.brand} size="small" />
                       : <Text style={styles.photoButtonText}>{t('carDetail.changePhoto')}</Text>
                     }
                   </TouchableOpacity>
                 </>
               ) : (
                 <TouchableOpacity
-                  style={[styles.addPhotoButton, uploadingImage && styles.buttonDisabled]}
+                  style={[styles.addPhotoButton, uploadingImage && shared.buttonDisabled]}
                   onPress={handlePickImage}
                   disabled={uploadingImage}
                 >
                   {uploadingImage
-                    ? <ActivityIndicator color="#6B7280" size="small" />
+                    ? <ActivityIndicator color={colors.textSecondary} size="small" />
                     : <Text style={styles.addPhotoText}>{t('carDetail.addParkingPhoto')}</Text>
                   }
                 </TouchableOpacity>
@@ -525,11 +527,11 @@ export default function CarDetailScreen() {
                   onChangeText={setNoteText}
                   onFocus={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                   placeholder={t('carDetail.notePlaceholder')}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.textMuted}
                   multiline
                   maxLength={500}
                 />
-                {savingNote && <ActivityIndicator size="small" color="#2563EB" style={styles.noteSpinner} />}
+                {savingNote && <ActivityIndicator size="small" color={colors.brand} style={styles.noteSpinner} />}
               </View>
             </View>
           )}
@@ -537,13 +539,13 @@ export default function CarDetailScreen() {
 
         <View style={styles.buttonSection}>
           <TouchableOpacity
-            style={[styles.button, savingLocation && styles.buttonDisabled]}
+            style={[shared.button, savingLocation && shared.buttonDisabled]}
             onPress={handleSaveLocation}
             disabled={savingLocation}
           >
             {savingLocation
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.buttonText}>
+              : <Text style={shared.buttonText}>
                   {loc ? t('carDetail.updateParkingLocation') : t('carDetail.saveParkingLocation')}
                 </Text>
             }
@@ -551,17 +553,17 @@ export default function CarDetailScreen() {
 
           {isOwner ? (
             <TouchableOpacity
-              style={styles.shareButton}
+              style={styles.textActionButton}
               onPress={() => router.push(`/car/${id}/share`)}
             >
-              <Text style={styles.shareButtonText}>{t('carDetail.manageSharing')}</Text>
+              <Text style={styles.textActionText}>{t('carDetail.manageSharing')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              style={styles.shareButton}
+              style={styles.textActionButton}
               onPress={handleLeaveVehicle}
             >
-              <Text style={styles.leaveButtonText}>{t('carDetail.leaveVehicle')}</Text>
+              <Text style={styles.leaveText}>{t('carDetail.leaveVehicle')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -570,71 +572,71 @@ export default function CarDetailScreen() {
       <Modal visible={editModalVisible} transparent animationType="fade">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.editBackdrop}
+          style={[shared.editBackdrop, styles.editBackdropOpaque]}
         >
-          <View style={styles.editSheet}>
-            <Text style={styles.editTitle}>{t('carDetail.editVehicle')}</Text>
+          <View style={shared.editSheet}>
+            <Text style={shared.editTitle}>{t('carDetail.editVehicle')}</Text>
 
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.editScrollContent}>
-              <Text style={styles.editLabel}>{t('carDetail.icon')}</Text>
-              <View style={styles.emojiGrid}>
+              <Text style={shared.editLabel}>{t('carDetail.icon')}</Text>
+              <View style={shared.emojiGrid}>
                 {VEHICLE_EMOJIS.map(e => (
                   <TouchableOpacity
                     key={e}
-                    style={[styles.emojiButton, editEmoji === e && styles.emojiButtonSelected]}
+                    style={[shared.emojiButton, editEmoji === e && shared.emojiButtonSelected]}
                     onPress={() => setEditEmoji(e)}
                   >
-                    <Text style={styles.emojiChar}>{e}</Text>
+                    <Text style={shared.emojiChar}>{e}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={styles.editLabel}>{t('carDetail.name')}</Text>
+              <Text style={shared.editLabel}>{t('carDetail.name')}</Text>
               <TextInput
-                style={styles.editInput}
+                style={shared.editInput}
                 value={editName}
                 onChangeText={setEditName}
                 placeholder={t('carDetail.vehicleNamePlaceholder')}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 maxLength={100}
               />
 
-              <Text style={styles.editLabel}>{t('carDetail.licensePlateLabel')}</Text>
+              <Text style={shared.editLabel}>{t('carDetail.licensePlateLabel')}</Text>
               <TextInput
-                style={styles.editInput}
+                style={shared.editInput}
                 value={editPlate}
                 onChangeText={setEditPlate}
                 placeholder={t('carDetail.optional')}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.textMuted}
                 maxLength={20}
                 autoCapitalize="characters"
               />
 
               <TouchableOpacity
-                style={[styles.button, styles.editButton, (!editName.trim() || savingEdit) && styles.buttonDisabled]}
+                style={[shared.button, (!editName.trim() || savingEdit) && shared.buttonDisabled]}
                 onPress={handleSaveEdit}
                 disabled={!editName.trim() || savingEdit}
               >
                 {savingEdit
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.buttonText}>{t('common.save')}</Text>
+                  : <Text style={shared.buttonText}>{t('common.save')}</Text>
                 }
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.shareButton}
+                style={styles.textActionButton}
                 onPress={() => setEditModalVisible(false)}
                 disabled={savingEdit}
               >
-                <Text style={styles.shareButtonText}>{t('common.cancel')}</Text>
+                <Text style={styles.textActionText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.shareButton}
+                style={styles.textActionButton}
                 onPress={handleDeleteCar}
                 disabled={savingEdit}
               >
-                <Text style={[styles.shareButtonText, { color: '#DC2626' }]}>{t('carDetail.deleteVehicle')}</Text>
+                <Text style={[styles.textActionText, { color: colors.destructive }]}>{t('carDetail.deleteVehicle')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -655,15 +657,11 @@ export default function CarDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
   map: {
     flex: 1,
   },
-  card: {
-    backgroundColor: '#fff',
+  bottomCard: {
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     shadowColor: '#000',
@@ -685,17 +683,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     gap: 16,
   },
-  carHeader: {
-    gap: 4,
-  },
-  carName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
-  },
   plate: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontWeight: '500',
     letterSpacing: 0.5,
   },
@@ -712,35 +702,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   directionsButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.brand,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
   directionsButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 14,
     fontWeight: '600',
   },
   locationLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   locationDate: {
     fontSize: 15,
-    color: '#111827',
+    color: colors.textPrimary,
     fontWeight: '500',
   },
   locationBy: {
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   noLocation: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: colors.textMuted,
   },
   photoSection: {
     gap: 8,
@@ -749,27 +739,27 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 160,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.divider,
   },
   photoButton: {
     alignSelf: 'flex-end',
     paddingVertical: 4,
   },
   photoButtonText: {
-    color: '#2563EB',
+    color: colors.brand,
     fontSize: 14,
     fontWeight: '500',
   },
   addPhotoButton: {
     borderWidth: 1.5,
-    borderColor: '#D1D5DB',
+    borderColor: colors.border,
     borderStyle: 'dashed',
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   addPhotoText: {
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -778,13 +768,13 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.borderLight,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     paddingRight: 32,
     fontSize: 14,
-    color: '#111827',
+    color: colors.textPrimary,
     minHeight: 72,
     textAlignVertical: 'top',
   },
@@ -793,106 +783,30 @@ const styles = StyleSheet.create({
     bottom: 8,
     right: 8,
   },
-  button: {
-    backgroundColor: '#2563EB',
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  shareButton: {
+  textActionButton: {
     alignItems: 'center',
     paddingVertical: 8,
   },
-  shareButtonText: {
-    color: '#2563EB',
+  textActionText: {
+    color: colors.brand,
     fontSize: 15,
     fontWeight: '500',
   },
-  leaveButtonText: {
-    color: '#DC2626',
+  leaveText: {
+    color: colors.destructive,
     fontSize: 15,
     fontWeight: '500',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
   },
   errorText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
-  editBackdrop: {
-    flex: 1,
+  editBackdropOpaque: {
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  editSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    maxHeight: '90%',
   },
   editScrollContent: {
     paddingBottom: 32,
     gap: 8,
-  },
-  emojiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  emojiButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emojiButtonSelected: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
-  },
-  emojiChar: {
-    fontSize: 24,
-  },
-  editButton: {
-    marginTop: 8,
-  },
-  editTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  editLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 8,
-  },
-  editInput: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    color: '#111827',
   },
   fullscreenBackdrop: {
     flex: 1,

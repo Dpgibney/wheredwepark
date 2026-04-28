@@ -14,6 +14,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { shared } from '@/styles/shared';
+import { colors } from '@/constants/colors';
 
 const VEHICLE_EMOJIS = [
   '🚗','🚙','🚕','🏎️','🚓','🚑','🚒','🚐','🛻','🚌','🚎','🚚','🚛','🚜',
@@ -75,39 +77,39 @@ export default function AddCarScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={shared.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>{t('addCar.icon')}</Text>
-        <View style={styles.emojiGrid}>
+        <Text style={shared.label}>{t('addCar.icon')}</Text>
+        <View style={[shared.emojiGrid, styles.emojiGridSpacing]}>
           {VEHICLE_EMOJIS.map(e => (
             <TouchableOpacity
               key={e}
-              style={[styles.emojiButton, emoji === e && styles.emojiButtonSelected]}
+              style={[shared.emojiButton, emoji === e && shared.emojiButtonSelected]}
               onPress={() => setEmoji(e)}
             >
-              <Text style={styles.emojiChar}>{e}</Text>
+              <Text style={shared.emojiChar}>{e}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>{t('addCar.vehicleName')}</Text>
+        <Text style={shared.label}>{t('addCar.vehicleName')}</Text>
         <TextInput
-          style={styles.input}
+          style={[shared.input, styles.inputSpacing]}
           placeholder={t('addCar.vehicleNamePlaceholder')}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textMuted}
           value={name}
           onChangeText={setName}
           autoFocus
           returnKeyType="next"
         />
 
-        <Text style={styles.label}>{t('addCar.licensePlate')}</Text>
+        <Text style={shared.label}>{t('addCar.licensePlate')}</Text>
         <TextInput
-          style={styles.input}
+          style={[shared.input, styles.inputSpacing]}
           placeholder={t('addCar.licensePlatePlaceholder')}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={colors.textMuted}
           value={licensePlate}
           onChangeText={setLicensePlate}
           autoCapitalize="characters"
@@ -116,13 +118,13 @@ export default function AddCarScreen() {
         />
 
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[shared.button, loading && shared.buttonDisabled]}
           onPress={handleAdd}
           disabled={loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>{t('addCar.addVehicle')}</Text>
+            : <Text style={shared.buttonText}>{t('addCar.addVehicle')}</Text>
           }
         </TouchableOpacity>
       </ScrollView>
@@ -131,67 +133,14 @@ export default function AddCarScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
   inner: {
     padding: 24,
     paddingTop: 32,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  emojiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  emojiGridSpacing: {
     marginBottom: 20,
   },
-  emojiButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emojiButtonSelected: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
-  },
-  emojiChar: {
-    fontSize: 24,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#111827',
+  inputSpacing: {
     marginBottom: 20,
-  },
-  button: {
-    backgroundColor: '#2563EB',
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

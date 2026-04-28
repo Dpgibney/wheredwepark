@@ -14,6 +14,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { shared } from '@/styles/shared';
+import { colors } from '@/constants/colors';
 
 type ParkingLocation = {
   latitude: number;
@@ -183,8 +185,8 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View style={shared.centered}>
+        <ActivityIndicator size="large" color={colors.brand} />
       </View>
     );
   }
@@ -194,12 +196,12 @@ export default function HomeScreen() {
       style={styles.list}
       data={cars.filter(car => !pendingInvites.some(i => i.car_id === car.id))}
       keyExtractor={item => item.id}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
       contentContainerStyle={styles.listContent}
       ListHeaderComponent={
         pendingInvites.length > 0 ? (
           <View style={styles.invitesSection}>
-            <Text style={styles.sectionLabel}>{t('home.pendingInvites')}</Text>
+            <Text style={shared.sectionLabel}>{t('home.pendingInvites')}</Text>
             {pendingInvites.map(invite => {
               const vehicle = invite.cars;
               const owner = vehicle?.profiles;
@@ -243,7 +245,7 @@ export default function HomeScreen() {
         const loc = item.parking_locations ?? null;
         return (
           <TouchableOpacity
-            style={styles.card}
+            style={styles.vehicleCard}
             onPress={() => router.push(`/car/${item.id}`)}
             activeOpacity={0.7}
           >
@@ -272,7 +274,7 @@ export default function HomeScreen() {
                 disabled={savingLocationId === item.id}
               >
                 {savingLocationId === item.id ? (
-                  <ActivityIndicator size="small" color="#2563EB" />
+                  <ActivityIndicator size="small" color={colors.brand} />
                 ) : (
                   <Text style={styles.updateLocationText}>📍</Text>
                 )}
@@ -289,34 +291,32 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   list: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.background,
   },
   listContent: {
     padding: 16,
     gap: 12,
     flexGrow: 1,
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
+  vehicleCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   invitesSection: {
     marginBottom: 8,
   },
   inviteCard: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.brandLight,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: colors.brandLightBorder,
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -325,11 +325,11 @@ const styles = StyleSheet.create({
   inviteName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   inviteSubtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: 8,
   },
   inviteActions: {
@@ -340,20 +340,20 @@ const styles = StyleSheet.create({
   declineButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colors.border,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   declineText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   acceptButton: {
     flex: 1,
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.brand,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   acceptText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.surface,
   },
   empty: {
     flex: 1,
@@ -372,25 +372,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textDark,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: '#9CA3AF',
+    color: colors.textMuted,
     textAlign: 'center',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
   },
   cardLeft: {
     flex: 1,
@@ -404,42 +392,42 @@ const styles = StyleSheet.create({
   carName: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   plate: {
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontWeight: '500',
     letterSpacing: 0.5,
   },
   parkedText: {
     fontSize: 13,
-    color: '#2563EB',
+    color: colors.brand,
     marginTop: 4,
   },
   noLocationText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: colors.textMuted,
     marginTop: 4,
   },
   sharedBadge: {
     fontSize: 11,
-    color: '#7C3AED',
+    color: colors.purple,
     fontWeight: '500',
     marginTop: 4,
   },
   chevron: {
     fontSize: 22,
-    color: '#D1D5DB',
+    color: colors.border,
     lineHeight: 26,
   },
   updateLocationButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.brandLight,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: colors.brandLightBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },

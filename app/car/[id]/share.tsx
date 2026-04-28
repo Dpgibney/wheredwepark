@@ -14,6 +14,8 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { shared } from '@/styles/shared';
+import { colors } from '@/constants/colors';
 
 type Share = {
   id: string;
@@ -124,17 +126,17 @@ export default function ShareScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={shared.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Add by email */}
       <View style={styles.addSection}>
-        <Text style={styles.sectionTitle}>{t('share.sendInvite')}</Text>
+        <Text style={shared.sectionLabel}>{t('share.sendInvite')}</Text>
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
             placeholder={t('share.emailPlaceholder')}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textMuted}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -143,7 +145,7 @@ export default function ShareScreen() {
             onSubmitEditing={handleAdd}
           />
           <TouchableOpacity
-            style={[styles.addButton, adding && styles.addButtonDisabled]}
+            style={[styles.addButton, adding && shared.buttonDisabled]}
             onPress={handleAdd}
             disabled={adding}
           >
@@ -156,7 +158,7 @@ export default function ShareScreen() {
       </View>
 
       {loading
-        ? <ActivityIndicator color="#2563EB" style={{ marginTop: 24 }} />
+        ? <ActivityIndicator color={colors.brand} style={{ marginTop: 24 }} />
         : (
           <FlatList
             data={[...pendingShares, ...acceptedShares]}
@@ -165,7 +167,7 @@ export default function ShareScreen() {
             ListHeaderComponent={
               <>
                 {pendingShares.length > 0 && (
-                  <Text style={styles.sectionTitle}>{t('share.pending')}</Text>
+                  <Text style={shared.sectionLabel}>{t('share.pending')}</Text>
                 )}
               </>
             }
@@ -179,7 +181,7 @@ export default function ShareScreen() {
               return (
                 <>
                   {showAcceptedHeader && (
-                    <Text style={[styles.sectionTitle, { marginTop: pendingShares.length > 0 ? 20 : 0 }]}>
+                    <Text style={[shared.sectionLabel, { marginTop: pendingShares.length > 0 ? 20 : 0 }]}>
                       {t('share.hasAccess')}
                     </Text>
                   )}
@@ -220,26 +222,14 @@ export default function ShareScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
   addSection: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: colors.divider,
   },
   listContent: {
     padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
   },
   inputRow: {
     flexDirection: 'row',
@@ -247,32 +237,29 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#111827',
+    color: colors.textPrimary,
   },
   addButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.brand,
     borderRadius: 10,
     paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addButtonDisabled: {
-    opacity: 0.6,
-  },
   addButtonText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 15,
     fontWeight: '600',
   },
   shareRow: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     padding: 14,
     flexDirection: 'row',
@@ -285,8 +272,8 @@ const styles = StyleSheet.create({
   },
   shareRowPending: {
     borderWidth: 1,
-    borderColor: '#FDE68A',
-    backgroundColor: '#FFFBEB',
+    borderColor: colors.pendingBorder,
+    backgroundColor: colors.pendingBg,
   },
   shareInfo: {
     flex: 1,
@@ -300,10 +287,10 @@ const styles = StyleSheet.create({
   shareName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   pendingBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.pendingBadge,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -311,20 +298,20 @@ const styles = StyleSheet.create({
   pendingBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#92400E',
+    color: colors.pendingText,
   },
   shareEmail: {
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   removeText: {
     fontSize: 14,
-    color: '#DC2626',
+    color: colors.destructive,
     fontWeight: '500',
   },
   emptyText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,
   },

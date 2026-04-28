@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { shared } from '@/styles/shared';
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
@@ -41,12 +42,12 @@ export default function ForgotPasswordScreen() {
 
   if (sent) {
     return (
-      <View style={styles.container}>
+      <View style={shared.container}>
         <View style={styles.inner}>
-          <Text style={styles.title}>{t('forgotPassword.successTitle')}</Text>
-          <Text style={styles.subtitle}>{t('forgotPassword.successMessage')}</Text>
-          <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-            <Text style={styles.buttonText}>{t('forgotPassword.backToLogin')}</Text>
+          <Text style={shared.title}>{t('forgotPassword.successTitle')}</Text>
+          <Text style={[shared.subtitle, styles.subtitleNarrow]}>{t('forgotPassword.successMessage')}</Text>
+          <TouchableOpacity style={shared.button} onPress={() => router.back()}>
+            <Text style={shared.buttonText}>{t('forgotPassword.backToLogin')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -55,15 +56,15 @@ export default function ForgotPasswordScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={shared.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.inner}>
-        <Text style={styles.title}>{t('forgotPassword.title')}</Text>
-        <Text style={styles.subtitle}>{t('forgotPassword.subtitle')}</Text>
+        <Text style={shared.title}>{t('forgotPassword.title')}</Text>
+        <Text style={[shared.subtitle, styles.subtitleNarrow]}>{t('forgotPassword.subtitle')}</Text>
 
         <TextInput
-          style={styles.input}
+          style={shared.input}
           placeholder={t('forgotPassword.emailPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={email}
@@ -77,18 +78,18 @@ export default function ForgotPasswordScreen() {
         />
 
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[shared.button, loading && shared.buttonDisabled]}
           onPress={handleSend}
           disabled={loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>{t('forgotPassword.sendButton')}</Text>
+            : <Text style={shared.buttonText}>{t('forgotPassword.sendButton')}</Text>
           }
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linkButton} onPress={() => router.back()}>
-          <Text style={styles.linkText}>{t('forgotPassword.backToLogin')}</Text>
+        <TouchableOpacity style={shared.linkButton} onPress={() => router.back()}>
+          <Text style={styles.backLink}>{t('forgotPassword.backToLogin')}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -96,60 +97,16 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
   inner: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
+  subtitleNarrow: {
     fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
     lineHeight: 22,
   },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#111827',
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: '#2563EB',
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  linkText: {
+  backLink: {
     color: '#2563EB',
     fontSize: 15,
     fontWeight: '500',

@@ -14,6 +14,7 @@ import {
 import { Link } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { shared } from '@/styles/shared';
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
@@ -54,18 +55,18 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={shared.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
         contentContainerStyle={styles.inner}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>{t('register.title')}</Text>
-        <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
+        <Text style={shared.title}>{t('register.title')}</Text>
+        <Text style={shared.subtitle}>{t('register.subtitle')}</Text>
 
         <TextInput
-          style={styles.input}
+          style={shared.input}
           placeholder={t('register.displayNamePlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={displayName}
@@ -75,7 +76,7 @@ export default function RegisterScreen() {
         />
 
         <TextInput
-          style={styles.input}
+          style={shared.input}
           placeholder={t('register.emailPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={email}
@@ -86,7 +87,7 @@ export default function RegisterScreen() {
         />
 
         <TextInput
-          style={styles.input}
+          style={shared.input}
           placeholder={t('register.passwordPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={password}
@@ -96,20 +97,20 @@ export default function RegisterScreen() {
         />
 
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+          style={[shared.button, loading && shared.buttonDisabled]}
           onPress={handleRegister}
           disabled={loading}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>{t('register.createAccount')}</Text>
+            : <Text style={shared.buttonText}>{t('register.createAccount')}</Text>
           }
         </TouchableOpacity>
 
         <Link href="/(auth)/login" asChild>
-          <TouchableOpacity style={styles.linkButton}>
-            <Text style={styles.linkText}>
-              {t('register.alreadyHaveAccount')}<Text style={styles.linkTextBold}>{t('register.signIn')}</Text>
+          <TouchableOpacity style={shared.linkButton}>
+            <Text style={shared.linkText}>
+              {t('register.alreadyHaveAccount')}<Text style={shared.linkTextBold}>{t('register.signIn')}</Text>
             </Text>
           </TouchableOpacity>
         </Link>
@@ -119,65 +120,10 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
   inner: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 48,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#111827',
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: '#2563EB',
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#6B7280',
-    fontSize: 15,
-  },
-  linkTextBold: {
-    color: '#2563EB',
-    fontWeight: '600',
   },
 });

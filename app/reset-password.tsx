@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { shared } from '@/styles/shared';
 
 export default function ResetPasswordScreen() {
   const { t } = useTranslation();
@@ -46,16 +47,16 @@ export default function ResetPasswordScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={shared.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.inner}>
-        <Text style={styles.title}>{t('resetPassword.title')}</Text>
-        <Text style={styles.subtitle}>{t('resetPassword.subtitle')}</Text>
+        <Text style={shared.title}>{t('resetPassword.title')}</Text>
+        <Text style={[shared.subtitle, styles.subtitleNarrow]}>{t('resetPassword.subtitle')}</Text>
 
-        <Text style={styles.label}>{t('resetPassword.newPassword')}</Text>
+        <Text style={shared.label}>{t('resetPassword.newPassword')}</Text>
         <TextInput
-          style={styles.input}
+          style={shared.input}
           placeholder={t('resetPassword.newPasswordPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={newPassword}
@@ -65,9 +66,9 @@ export default function ResetPasswordScreen() {
           autoFocus
         />
 
-        <Text style={styles.label}>{t('resetPassword.confirmPassword')}</Text>
+        <Text style={shared.label}>{t('resetPassword.confirmPassword')}</Text>
         <TextInput
-          style={styles.input}
+          style={shared.input}
           placeholder={t('resetPassword.confirmPasswordPlaceholder')}
           placeholderTextColor="#9CA3AF"
           value={confirmPassword}
@@ -79,13 +80,13 @@ export default function ResetPasswordScreen() {
         />
 
         <TouchableOpacity
-          style={[styles.button, disabled && styles.buttonDisabled]}
+          style={[shared.button, disabled && shared.buttonDisabled]}
           onPress={handleSave}
           disabled={disabled}
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>{t('resetPassword.saveButton')}</Text>
+            : <Text style={shared.buttonText}>{t('resetPassword.saveButton')}</Text>
           }
         </TouchableOpacity>
       </View>
@@ -94,60 +95,13 @@ export default function ResetPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
   inner: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
+  subtitleNarrow: {
     fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
     lineHeight: 22,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 6,
-    marginTop: 4,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#111827',
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: '#2563EB',
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

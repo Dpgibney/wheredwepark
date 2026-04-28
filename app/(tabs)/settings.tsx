@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { shared } from '@/styles/shared';
+import { colors } from '@/constants/colors';
 
 type ActiveSheet = 'password' | 'name' | null;
 
@@ -164,18 +166,18 @@ export default function SettingsScreen() {
       {/* Bottom Sheet Modal */}
       <Modal visible={activeSheet !== null} transparent animationType="none">
         <KeyboardAvoidingView
-          style={styles.editBackdrop}
+          style={shared.editBackdrop}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeSheet} />
 
           {activeSheet === 'password' && (
-            <Animated.View style={[styles.editSheet, { transform: [{ translateY: slideAnim }] }]}>
-              <Text style={styles.editTitle}>{t('settings.changePassword')}</Text>
+            <Animated.View style={[shared.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+              <Text style={shared.editTitle}>{t('settings.changePassword')}</Text>
 
-              <Text style={styles.editLabel}>{t('settings.currentPassword')}</Text>
+              <Text style={shared.editLabel}>{t('settings.currentPassword')}</Text>
               <TextInput
-                style={styles.editInput}
+                style={shared.editInput}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry
@@ -183,9 +185,9 @@ export default function SettingsScreen() {
                 autoCapitalize="none"
               />
 
-              <Text style={styles.editLabel}>{t('settings.newPassword')}</Text>
+              <Text style={shared.editLabel}>{t('settings.newPassword')}</Text>
               <TextInput
-                style={styles.editInput}
+                style={shared.editInput}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry
@@ -193,9 +195,9 @@ export default function SettingsScreen() {
                 autoCapitalize="none"
               />
 
-              <Text style={styles.editLabel}>{t('settings.confirmNewPassword')}</Text>
+              <Text style={shared.editLabel}>{t('settings.confirmNewPassword')}</Text>
               <TextInput
-                style={styles.editInput}
+                style={shared.editInput}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -204,14 +206,14 @@ export default function SettingsScreen() {
               />
 
               <TouchableOpacity
-                style={[styles.saveButton, passwordSaveDisabled && styles.saveButtonDisabled]}
+                style={[shared.button, passwordSaveDisabled && shared.buttonDisabled]}
                 onPress={handleChangePassword}
                 disabled={passwordSaveDisabled}
               >
                 {changingPassword ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>{t('settings.updatePassword')}</Text>
+                  <Text style={shared.buttonText}>{t('settings.updatePassword')}</Text>
                 )}
               </TouchableOpacity>
 
@@ -222,12 +224,12 @@ export default function SettingsScreen() {
           )}
 
           {activeSheet === 'name' && (
-            <Animated.View style={[styles.editSheet, { transform: [{ translateY: slideAnim }] }]}>
-              <Text style={styles.editTitle}>{t('settings.changeName')}</Text>
+            <Animated.View style={[shared.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+              <Text style={shared.editTitle}>{t('settings.changeName')}</Text>
 
-              <Text style={styles.editLabel}>{t('settings.displayName')}</Text>
+              <Text style={shared.editLabel}>{t('settings.displayName')}</Text>
               <TextInput
-                style={styles.editInput}
+                style={shared.editInput}
                 value={nameInput}
                 onChangeText={setNameInput}
                 placeholder={t('settings.displayNamePlaceholder')}
@@ -236,14 +238,14 @@ export default function SettingsScreen() {
               />
 
               <TouchableOpacity
-                style={[styles.saveButton, nameSaveDisabled && styles.saveButtonDisabled]}
+                style={[shared.button, nameSaveDisabled && shared.buttonDisabled]}
                 onPress={handleChangeName}
                 disabled={nameSaveDisabled}
               >
                 {changingName ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>{t('settings.updateName')}</Text>
+                  <Text style={shared.buttonText}>{t('settings.updateName')}</Text>
                 )}
               </TouchableOpacity>
 
@@ -261,11 +263,11 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.background,
     padding: 24,
   },
   profileCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -281,27 +283,27 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   avatarText: {
-    color: '#fff',
+    color: colors.surface,
     fontSize: 26,
     fontWeight: '700',
   },
   displayName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   email: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -317,11 +319,11 @@ const styles = StyleSheet.create({
   rowButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.divider,
   },
   signOutButton: {
     padding: 16,
@@ -330,54 +332,7 @@ const styles = StyleSheet.create({
   signOutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#DC2626',
-  },
-  editBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  editSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    gap: 8,
-  },
-  editTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  editLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  editInput: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    color: '#111827',
-  },
-  saveButton: {
-    backgroundColor: '#2563EB',
-    borderRadius: 10,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
+    color: colors.destructive,
   },
   cancelLink: {
     alignItems: 'center',
@@ -385,6 +340,6 @@ const styles = StyleSheet.create({
   },
   cancelLinkText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
 });
