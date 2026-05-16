@@ -14,9 +14,21 @@ import {
   Linking,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import {
+  initConnection,
+  endConnection,
+  fetchProducts,
+  requestPurchase,
+  purchaseUpdatedListener,
+  purchaseErrorListener,
+  finishTransaction,
+  type Product,
+} from 'react-native-iap';
 import { supabase } from '@/lib/supabase';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
+
+const DONATION_SKU = 'a1';
 
 type ActiveSheet = 'password' | 'name' | null;
 
@@ -38,6 +50,64 @@ export default function SettingsScreen() {
   // Name fields
   const [nameInput, setNameInput] = useState('');
   const [changingName, setChangingName] = useState(false);
+
+  // Donation
+  const [donationProduct, setDonationProduct] = useState<Product | null>(null);
+  const [donating, setDonating] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    let purchaseListener: ReturnType<typeof purchaseUpdatedListener>;
+    let errorListener: ReturnType<typeof purchaseErrorListener>;
+
+    initConnection().then(() => {
+      fetchProducts({ skus: [DONATION_SKU] }).then(products => {
+        const p = products?.[0];
+        if (p) setDonationProduct(p as Product);
+      });
+
+      purchaseListener = purchaseUpdatedListener(async purchase => {
+        if (purchase.transactionId) {
+          await finishTransaction({ purchase, isConsumable: true });
+          setDonating(false);
+          Alert.alert(t('settings.donateThanksTitle'), t('settings.donateThanksMessage'));
+        }
+      });
+
+      errorListener = purchaseErrorListener(error => {
+        if ((error as any).code !== 'E_USER_CANCELLED') {
+          Alert.alert(t('common.error'), error.message);
+        }
+        setDonating(false);
+      });
+    }).catch(() => setDonationProduct(null));
+
+    return () => {
+      purchaseListener?.remove();
+      errorListener?.remove();
+      endConnection();
+    };
+  }, []);
+
+  async function handleDonate() {
+    if (!donationProduct) {
+      Alert.alert(t('common.error'), t('settings.donateUnavailable'));
+      return;
+    }
+    setDonating(true);
+    try {
+      await requestPurchase({
+        request: { apple: { sku: DONATION_SKU } },
+        type: 'in-app',
+      });
+    } catch (err: any) {
+      if (err?.code !== 'E_USER_CANCELLED') {
+        Alert.alert(t('common.error'), err.message);
+      }
+      setDonating(false);
+    }
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -158,6 +228,33 @@ export default function SettingsScreen() {
           <Text style={styles.rowButtonText}>{t('settings.privacyPolicy')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
+        <TouchableOpacity
+          style={styles.rowButton}
+          onPress={() => Linking.openURL('mailto:support@wheredwepark.com?subject=Where%27d%20We%20Park%20-%20Feedback')}
+        >
+          <Text style={styles.rowButtonText}>{t('settings.contactUs')}</Text>
+        </TouchableOpacity>
+        <View style={styles.divider} />
+        {Platform.OS === 'ios' && (
+          <>
+            <TouchableOpacity
+              style={styles.rowButton}
+              onPress={handleDonate}
+              disabled={donating}
+            >
+              {donating ? (
+                <ActivityIndicator color={colors.brand} />
+              ) : (
+                <Text style={styles.rowButtonText}>
+                  {donationProduct
+                    ? t('settings.donateButton', { price: donationProduct.displayPrice })
+                    : t('settings.donate')}
+                </Text>
+              )}
+            </TouchableOpacity>
+            <View style={styles.divider} />
+          </>
+        )}
         <TouchableOpacity style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
           <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
         </TouchableOpacity>

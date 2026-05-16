@@ -48,7 +48,13 @@
     "updatePassword": "Update Password",
     "displayName": "Display Name",
     "displayNamePlaceholder": "Your name",
-    "updateName": "Update Name"
+    "updateName": "Update Name",
+    "contactUs": "Contact Us / Report a Problem",
+    "donate": "Support the App",
+    "donateButton": "Donate {{price}}",
+    "donateThanksTitle": "Thank you!",
+    "donateThanksMessage": "Your support means a lot.",
+    "donateUnavailable": "In-app purchases are not available on this device."
   },
   "login": {
     "title": "Where'd We Park?",
@@ -101,7 +107,10 @@
     "fillAllFields": "Please fill in all fields.",
     "displayNameTooLong": "Display name must be 100 characters or fewer.",
     "passwordTooShort": "Password must be at least 8 characters.",
-    "registrationFailed": "Registration Failed"
+    "registrationFailed": "Registration Failed",
+    "emailAlreadyRegistered": "An account with this email already exists.",
+    "checkEmailTitle": "Check Your Email",
+    "checkEmailMessage": "A confirmation email has been sent to {{email}}. Please check your inbox to complete registration."
   },
   "addCar": {
     "icon": "Icon",

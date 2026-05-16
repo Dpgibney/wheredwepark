@@ -38,7 +38,7 @@ export default function RegisterScreen() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -48,9 +48,22 @@ export default function RegisterScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert(t('register.registrationFailed'), error.message);
+      if (error.message.toLowerCase().includes('already registered')) {
+        Alert.alert(t('common.error'), t('register.emailAlreadyRegistered'));
+      } else {
+        Alert.alert(t('register.registrationFailed'), error.message);
+      }
+      return;
     }
-    // On success, onAuthStateChange in _layout.tsx redirects to app
+
+    if (data.user && !data.session) {
+      if (data.user.identities?.length === 0) {
+        Alert.alert(t('common.error'), t('register.emailAlreadyRegistered'));
+      } else {
+        Alert.alert(t('register.checkEmailTitle'), t('register.checkEmailMessage', { email }));
+      }
+    }
+    // If session exists, onAuthStateChange in _layout.tsx redirects to app
   }
 
   return (

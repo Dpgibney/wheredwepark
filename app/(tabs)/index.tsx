@@ -46,7 +46,7 @@ export default function HomeScreen() {
   const [cars, setCars] = useState<Car[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [savingLocationId, setSavingLocationId] = useState<string | null>(null);
   const router = useRouter();
@@ -90,8 +90,7 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      fetchAll().finally(() => setLoading(false));
+      fetchAll().finally(() => setHasLoadedOnce(true));
     }, [])
   );
 
@@ -183,7 +182,7 @@ export default function HomeScreen() {
     return t('home.timeAgoDays', { count: Math.floor(diffHours / 24) });
   }
 
-  if (loading) {
+  if (!hasLoadedOnce) {
     return (
       <View style={shared.centered}>
         <ActivityIndicator size="large" color={colors.brand} />
