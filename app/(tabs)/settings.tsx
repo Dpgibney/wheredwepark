@@ -164,6 +164,9 @@ export default function SettingsScreen() {
     if (error) {
       Alert.alert(t('common.error'), error.message);
     } else {
+      // Revoke any other active sessions so a stolen refresh token can't
+      // outlive the password change.
+      await supabase.auth.signOut({ scope: 'others' });
       Alert.alert(t('settings.success'), t('settings.passwordUpdated'));
       closeSheet();
     }

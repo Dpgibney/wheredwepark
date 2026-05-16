@@ -39,14 +39,14 @@ export interface Database {
         Update: { name?: string; license_plate?: string | null; emoji?: string | null };
       };
       car_shares: {
-        Row: { id: string; car_id: string; shared_with_user_id: string; created_at: string };
-        Insert: { car_id: string; shared_with_user_id: string };
-        Update: never;
+        Row: { id: string; car_id: string; shared_with_user_id: string; status: 'pending' | 'accepted'; created_at: string };
+        Insert: { car_id: string; shared_with_user_id: string; status?: 'pending' | 'accepted' };
+        Update: { status?: 'pending' | 'accepted' };
       };
       parking_locations: {
-        Row: { id: string; car_id: string; latitude: number; longitude: number; updated_by_user_id: string; updated_at: string; notes: string | null };
-        Insert: { car_id: string; latitude: number; longitude: number; updated_by_user_id: string; notes?: string | null };
-        Update: { latitude?: number; longitude?: number; updated_by_user_id?: string; updated_at?: string; notes?: string | null };
+        Row: { id: string; car_id: string; latitude: number; longitude: number; updated_by_user_id: string; updated_at: string; notes: string | null; image_path: string | null };
+        Insert: { car_id: string; latitude: number; longitude: number; updated_by_user_id: string; notes?: string | null; image_path?: string | null };
+        Update: { latitude?: number; longitude?: number; updated_by_user_id?: string; updated_at?: string; notes?: string | null; image_path?: string | null };
       };
     };
   };

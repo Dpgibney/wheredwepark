@@ -33,6 +33,7 @@ create table cars (
   owner_id      uuid references profiles(id) on delete cascade not null,
   name          text not null check (char_length(name) <= 100),
   license_plate text check (char_length(license_plate) <= 20),
+  emoji         text check (char_length(emoji) <= 16),
   created_at    timestamptz default now() not null
 );
 
@@ -49,12 +50,12 @@ create table car_shares (
 create table parking_locations (
   id                  uuid primary key default gen_random_uuid(),
   car_id              uuid references cars(id) on delete cascade not null unique,
-  latitude            double precision not null,
-  longitude           double precision not null,
+  latitude            double precision not null check (latitude between -90 and 90),
+  longitude           double precision not null check (longitude between -180 and 180),
   updated_by_user_id  uuid references profiles(id) not null,
   updated_at          timestamptz default now() not null,
   notes               text check (char_length(notes) <= 500),
-  image_path          text
+  image_path          text check (image_path is null or image_path = car_id::text || '/parking.jpg')
 );
 
 -- ------------------------------------------------------------
@@ -85,6 +86,7 @@ returns boolean
 language sql
 security definer
 stable
+set search_path = public, pg_temp
 as $$
   select exists (
     select 1 from cars
@@ -145,6 +147,7 @@ returns boolean
 language sql
 security definer
 stable
+set search_path = public, pg_temp
 as $$
   select exists (
     select 1 from cars c
@@ -176,24 +179,44 @@ create policy "Users can update own profile"
   on profiles for update
   using (auth.uid() = id);
 
--- Secure RPC for looking up a user by email when sending a share invite.
--- Returns id + display_name only on exact match; no rows otherwise.
-create or replace function lookup_profile_for_share(p_email text)
-returns table (id uuid, display_name text)
-language sql
+-- Atomic invite RPC. The owner of p_car_id calls this with the recipient's
+-- email; we look up the profile internally and create a pending share row.
+-- Returns nothing — same result whether the email is registered or not, so
+-- the function cannot be used to enumerate accounts or learn display names.
+create or replace function invite_to_car(p_car_id uuid, p_email text)
+returns void
+language plpgsql
 security definer
-stable
-set search_path = public
+set search_path = public, pg_temp
 as $$
-  select p.id, p.display_name
-  from profiles p
-  where lower(p.email) = lower(trim(p_email))
-    and p.id <> auth.uid()
+declare
+  v_recipient uuid;
+begin
+  if not exists (
+    select 1 from cars
+    where id = p_car_id and owner_id = auth.uid()
+  ) then
+    raise exception 'not authorized' using errcode = '42501';
+  end if;
+
+  select id into v_recipient
+  from profiles
+  where lower(email) = lower(trim(p_email))
+    and id <> auth.uid()
   limit 1;
+
+  if v_recipient is null then
+    return;
+  end if;
+
+  insert into car_shares (car_id, shared_with_user_id, status)
+  values (p_car_id, v_recipient, 'pending')
+  on conflict (car_id, shared_with_user_id) do nothing;
+end;
 $$;
 
-revoke all on function lookup_profile_for_share(text) from public;
-grant execute on function lookup_profile_for_share(text) to authenticated;
+revoke all on function invite_to_car(uuid, text) from public;
+grant execute on function invite_to_car(uuid, text) to authenticated;
 
 -- cars
 create policy "Users can view accessible cars"
@@ -207,6 +230,7 @@ returns boolean
 language sql
 security definer
 stable
+set search_path = public, pg_temp
 as $$
   select exists (
     select 1 from car_shares
@@ -244,6 +268,7 @@ create policy "Owners can create shares"
   on car_shares for insert
   with check (
     exists (select 1 from cars where id = car_id and owner_id = auth.uid())
+    and status = 'pending'
   );
 
 create policy "Owners can delete shares"
@@ -315,15 +340,22 @@ create policy "Users with car access can view parking images"
   using (bucket_id = 'parking-images'
     and user_has_car_access((storage.foldername(name))[1]::uuid));
 
+-- Writes are pinned to the {car_id}/parking.jpg path the app enforces in code,
+-- so a shared user can't fill the owner's folder with extra files.
+-- SELECT/DELETE stay permissive so owners can clean up any pre-existing extras.
 create policy "Users with car access can upload parking images"
   on storage.objects for insert
   with check (bucket_id = 'parking-images'
-    and user_has_car_access((storage.foldername(name))[1]::uuid));
+    and user_has_car_access((storage.foldername(name))[1]::uuid)
+    and name = (storage.foldername(name))[1] || '/parking.jpg');
 
 create policy "Users with car access can update parking images"
   on storage.objects for update
   using (bucket_id = 'parking-images'
-    and user_has_car_access((storage.foldername(name))[1]::uuid));
+    and user_has_car_access((storage.foldername(name))[1]::uuid))
+  with check (bucket_id = 'parking-images'
+    and user_has_car_access((storage.foldername(name))[1]::uuid)
+    and name = (storage.foldername(name))[1] || '/parking.jpg');
 
 create policy "Users with car access can delete parking images"
   on storage.objects for delete

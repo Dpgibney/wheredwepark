@@ -59,27 +59,21 @@ export default function ShareScreen() {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed) return;
 
-    const { data: lookup, error: lookupError } = await supabase
-      .rpc('lookup_profile_for_share', { p_email: trimmed });
-
-    const profile = Array.isArray(lookup) && lookup.length > 0 ? lookup[0] : null;
-
-    if (lookupError || !profile) {
-      setEmail('');
-      Alert.alert(t('share.inviteSent'), t('share.inviteSentMessage'));
-      return;
-    }
-
-    const alreadyShared = shares.some(s => s.shared_with_user_id === profile.id);
+    // "Already invited" is detected against the existing shares list so the
+    // server-side RPC stays opaque about whether an arbitrary email is
+    // registered. shares already contains the email of everyone the owner
+    // has invited, so no extra lookup is needed.
+    const alreadyShared = shares.some(s => s.profiles?.email?.toLowerCase() === trimmed);
     if (alreadyShared) {
       Alert.alert(t('share.alreadyInvited'), t('share.alreadyInvitedMessage'));
       return;
     }
 
     setAdding(true);
-    const { error } = await supabase
-      .from('car_shares')
-      .insert({ car_id: carId, shared_with_user_id: profile.id, status: 'pending' });
+    const { error } = await supabase.rpc('invite_to_car', {
+      p_car_id: carId,
+      p_email: trimmed,
+    });
     setAdding(false);
 
     if (error) {

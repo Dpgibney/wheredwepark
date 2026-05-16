@@ -38,7 +38,7 @@ type PendingInvite = {
   cars: {
     name: string;
     emoji: string | null;
-    profiles: { display_name: string | null; email: string } | null;
+    profiles: { display_name: string | null } | null;
   } | null;
 };
 
@@ -81,7 +81,7 @@ export default function HomeScreen() {
 
     const { data, error } = await supabase
       .from('car_shares')
-      .select('id, car_id, cars(name, emoji, profiles(display_name, email))')
+      .select('id, car_id, cars(name, emoji, profiles(display_name))')
       .eq('shared_with_user_id', user.id)
       .eq('status', 'pending');
 
@@ -204,7 +204,7 @@ export default function HomeScreen() {
             {pendingInvites.map(invite => {
               const vehicle = invite.cars;
               const owner = vehicle?.profiles;
-              const ownerName = owner?.display_name ?? owner?.email ?? 'Someone';
+              const ownerName = owner?.display_name ?? 'Someone';
               return (
                 <View key={invite.id} style={styles.inviteCard}>
                   <Text style={styles.inviteName}>

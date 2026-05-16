@@ -33,14 +33,18 @@ export default function ResetPasswordScreen() {
     }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       Alert.alert(t('resetPassword.errorTitle'), error.message);
-    } else {
-      Alert.alert(t('resetPassword.success'), t('resetPassword.successMessage'), [
-        { text: 'OK', onPress: () => router.replace('/(tabs)') },
-      ]);
+      return;
     }
+    // Revoke any other active sessions so a stolen refresh token can't
+    // outlive the password reset.
+    await supabase.auth.signOut({ scope: 'others' });
+    setLoading(false);
+    Alert.alert(t('resetPassword.success'), t('resetPassword.successMessage'), [
+      { text: 'OK', onPress: () => router.replace('/(tabs)') },
+    ]);
   }
 
   const disabled = loading || newPassword.length === 0 || confirmPassword.length === 0;
