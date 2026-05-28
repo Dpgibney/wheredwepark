@@ -63,7 +63,10 @@ create table parking_locations (
 -- ------------------------------------------------------------
 
 create or replace function check_car_limit()
-returns trigger language plpgsql as $$
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
 begin
   if (select count(*) from cars where owner_id = new.owner_id) >= 10 then
     raise exception 'Car limit reached. A user may only add up to 10 vehicles.';
@@ -99,6 +102,10 @@ as $$
   );
 $$;
 
+-- Hide from /rest/v1/rpc; authenticated still needs EXECUTE for RLS evaluation.
+revoke execute on function user_has_car_access(uuid) from public, anon;
+grant  execute on function user_has_car_access(uuid) to authenticated;
+
 -- ------------------------------------------------------------
 -- TRIGGER: auto-create profile on auth.users insert
 -- ------------------------------------------------------------
@@ -118,6 +125,9 @@ begin
   return new;
 end;
 $$;
+
+-- Only the auth.users trigger invokes this; no PostgREST caller should reach it.
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -170,6 +180,9 @@ as $$
       and user_has_car_access(pl.car_id)
   );
 $$;
+
+revoke execute on function user_connected_to_profile(uuid) from public, anon;
+grant  execute on function user_connected_to_profile(uuid) to authenticated;
 
 create policy "Users can view connected profiles"
   on profiles for select
@@ -238,6 +251,9 @@ as $$
       and shared_with_user_id = auth.uid()
   );
 $$;
+
+revoke execute on function user_has_pending_invite(uuid) from public, anon;
+grant  execute on function user_has_pending_invite(uuid) to authenticated;
 
 -- Allows pending invite recipients to see car name/type in their invite card
 create policy "Users can view cars with pending invites"
@@ -308,6 +324,7 @@ create policy "Users with access can update parking locations"
 create or replace function enforce_parking_location_update()
 returns trigger
 language plpgsql
+set search_path = public, pg_temp
 as $$
 begin
   if new.car_id <> old.car_id then

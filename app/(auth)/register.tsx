@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -43,6 +42,7 @@ export default function RegisterScreen() {
       password,
       options: {
         data: { display_name: displayName },
+        emailRedirectTo: 'wheredwepark://login',
       },
     });
     setLoading(false);

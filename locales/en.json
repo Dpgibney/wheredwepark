@@ -54,7 +54,16 @@
     "donateButton": "Donate {{price}}",
     "donateThanksTitle": "Thank you!",
     "donateThanksMessage": "Your support means a lot.",
-    "donateUnavailable": "In-app purchases are not available on this device."
+    "donateUnavailable": "In-app purchases are not available on this device.",
+    "deleteAccount": "Delete Account"
+  },
+  "deleteAccount": {
+    "title": "Delete Account",
+    "warning": "This will permanently delete your account, all your vehicles, parking locations, and shares. This action cannot be undone.",
+    "emailLabel": "Type your email to confirm",
+    "emailPlaceholder": "your@email.com",
+    "deleteButton": "Delete My Account",
+    "failed": "Could not delete account. Please try again or contact support."
   },
   "login": {
     "title": "Where'd We Park?",
@@ -203,6 +212,8 @@
     "myVehicles": "My Vehicles",
     "settings": "Settings",
     "forgotPassword": "Reset Password",
-    "resetPassword": "Set New Password"
+    "resetPassword": "Set New Password",
+    "linkInvalidTitle": "Link Invalid or Expired",
+    "linkExpiredMessage": "This link has already been used or has expired. Please sign in or request a new one."
   }
 }

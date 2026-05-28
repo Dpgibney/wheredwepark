@@ -37,6 +37,9 @@ export const shared = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
+  buttonDestructive: {
+    backgroundColor: colors.destructive,
+  },
   buttonText: {
     color: colors.surface,
     fontSize: 16,

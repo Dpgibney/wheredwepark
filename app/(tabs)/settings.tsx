@@ -30,7 +30,7 @@ import { colors } from '@/constants/colors';
 
 const DONATION_SKU = 'a1';
 
-type ActiveSheet = 'password' | 'name' | null;
+type ActiveSheet = 'password' | 'name' | 'deleteAccount' | null;
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -50,6 +50,10 @@ export default function SettingsScreen() {
   // Name fields
   const [nameInput, setNameInput] = useState('');
   const [changingName, setChangingName] = useState(false);
+
+  // Delete account fields
+  const [deleteEmailInput, setDeleteEmailInput] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Donation
   const [donationProduct, setDonationProduct] = useState<Product | null>(null);
@@ -138,6 +142,7 @@ export default function SettingsScreen() {
     setNewPassword('');
     setConfirmPassword('');
     setNameInput('');
+    setDeleteEmailInput('');
   }
 
   async function handleChangePassword() {
@@ -193,6 +198,33 @@ export default function SettingsScreen() {
     }
   }
 
+  const emailMatches =
+    !!email && deleteEmailInput.trim().toLowerCase() === email.toLowerCase();
+
+  async function handleDeleteAccount() {
+    if (!emailMatches) return;
+    setDeletingAccount(true);
+    const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+    if (error) {
+      setDeletingAccount(false);
+      // supabase-js wraps the response in `error.context` — read the body so we
+      // surface the actual server-side reason instead of the generic wrapper.
+      let detail = error.message ?? t('deleteAccount.failed');
+      const ctx = (error as any).context;
+      if (ctx && typeof ctx.text === 'function') {
+        try {
+          const body = await ctx.text();
+          if (body) detail = `${ctx.status}: ${body}`;
+        } catch {}
+      }
+      Alert.alert(t('common.error'), detail);
+      return;
+    }
+    // The auth.users row is gone server-side; signing out clears the local
+    // session and triggers the redirect to the login screen in app/_layout.tsx.
+    await supabase.auth.signOut();
+  }
+
   const passwordSaveDisabled =
     changingPassword ||
     currentPassword.length === 0 ||
@@ -200,6 +232,8 @@ export default function SettingsScreen() {
     confirmPassword.length === 0;
 
   const nameSaveDisabled = changingName || nameInput.trim().length === 0;
+
+  const deleteAccountDisabled = deletingAccount || !emailMatches;
 
   return (
     <View style={styles.container}>
@@ -260,6 +294,10 @@ export default function SettingsScreen() {
         )}
         <TouchableOpacity style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
           <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
+        </TouchableOpacity>
+        <View style={styles.divider} />
+        <TouchableOpacity style={styles.signOutButton} onPress={() => openSheet('deleteAccount')}>
+          <Text style={styles.signOutText}>{t('settings.deleteAccount')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -346,6 +384,46 @@ export default function SettingsScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text style={shared.buttonText}>{t('settings.updateName')}</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
+                <Text style={styles.cancelLinkText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {activeSheet === 'deleteAccount' && (
+            <Animated.View style={[shared.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+              <Text style={shared.editTitle}>{t('deleteAccount.title')}</Text>
+
+              <Text style={styles.deleteWarning}>{t('deleteAccount.warning')}</Text>
+
+              <Text style={shared.editLabel}>{t('deleteAccount.emailLabel')}</Text>
+              <TextInput
+                style={shared.editInput}
+                value={deleteEmailInput}
+                onChangeText={setDeleteEmailInput}
+                placeholder={t('deleteAccount.emailPlaceholder')}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
+              />
+
+              <TouchableOpacity
+                style={[
+                  shared.button,
+                  shared.buttonDestructive,
+                  deleteAccountDisabled && shared.buttonDisabled,
+                ]}
+                onPress={handleDeleteAccount}
+                disabled={deleteAccountDisabled}
+              >
+                {deletingAccount ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={shared.buttonText}>{t('deleteAccount.deleteButton')}</Text>
                 )}
               </TouchableOpacity>
 
@@ -441,5 +519,11 @@ const styles = StyleSheet.create({
   cancelLinkText: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  deleteWarning: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 12,
   },
 });

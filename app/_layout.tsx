@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
@@ -27,21 +27,45 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Handle password-reset deep links (wheredwepark://reset-password#access_token=...&type=recovery)
+  // Handle Supabase auth deep links. Tokens arrive in the URL hash
+  // (#access_token=...&type=recovery|signup|magiclink|invite); errors from
+  // already-used or expired links arrive as query params (?error=...).
   useEffect(() => {
     function handleUrl(url: string | null) {
       if (!url) return;
-      const hash = url.split('#')[1];
-      if (!hash) return;
-      const params = new URLSearchParams(hash);
-      if (params.get('type') !== 'recovery') return;
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
+
+      const [beforeHash, hashPart] = url.split('#');
+      const queryPart = beforeHash.includes('?') ? beforeHash.split('?')[1] : '';
+      const hashParams = hashPart ? new URLSearchParams(hashPart) : null;
+      const queryParams = queryPart ? new URLSearchParams(queryPart) : null;
+
+      const errorCode =
+        hashParams?.get('error_code') ?? queryParams?.get('error_code');
+      const errorDescription =
+        hashParams?.get('error_description') ?? queryParams?.get('error_description');
+      if (errorCode || errorDescription) {
+        const message = errorDescription
+          ? decodeURIComponent(errorDescription.replace(/\+/g, ' '))
+          : t('layout.linkExpiredMessage');
+        Alert.alert(t('layout.linkInvalidTitle'), message);
+        return;
+      }
+
+      if (!hashParams) return;
+      const type = hashParams.get('type');
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
       if (!accessToken || !refreshToken) return;
+
       supabase.auth
         .setSession({ access_token: accessToken, refresh_token: refreshToken })
         .then(({ error }) => {
-          if (!error) router.replace('/reset-password' as any);
+          if (error) return;
+          if (type === 'recovery') {
+            router.replace('/reset-password' as any);
+          }
+          // signup/magiclink/invite: onAuthStateChange picks up the new session
+          // and the routing effect below sends the user to /(tabs).
         });
     }
 
