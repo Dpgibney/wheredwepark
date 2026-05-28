@@ -192,6 +192,26 @@ create policy "Users can update own profile"
   on profiles for update
   using (auth.uid() = id);
 
+-- email is owned by auth.users (synced on signup by handle_new_user). The
+-- update policy has no column restriction, so a user could otherwise rewrite
+-- their profiles.email to a victim's address and intercept invites resolved
+-- by invite_to_car. Ignore any client-supplied email change.
+create or replace function enforce_profile_email_immutable()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  new.email := old.email;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_email_immutable_trigger on profiles;
+create trigger profiles_email_immutable_trigger
+  before update on profiles
+  for each row execute procedure enforce_profile_email_immutable();
+
 -- Atomic invite RPC. The owner of p_car_id calls this with the recipient's
 -- email; we look up the profile internally and create a pending share row.
 -- Returns nothing — same result whether the email is registered or not, so
@@ -285,6 +305,7 @@ create policy "Owners can create shares"
   with check (
     exists (select 1 from cars where id = car_id and owner_id = auth.uid())
     and status = 'pending'
+    and shared_with_user_id <> auth.uid()
   );
 
 create policy "Owners can delete shares"
@@ -301,6 +322,32 @@ create policy "Recipients can update share status"
   on car_shares for update
   using (auth.uid() = shared_with_user_id)
   with check (auth.uid() = shared_with_user_id);
+
+-- The update policy only pins shared_with_user_id, so without this guard a
+-- recipient could re-point an existing share at any car (set car_id to a
+-- victim's UUID + status='accepted') and self-grant access via
+-- user_has_car_access. Lock car_id and shared_with_user_id so only status
+-- can change — mirrors the parking_locations update trigger.
+create or replace function enforce_car_share_update()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if new.car_id <> old.car_id then
+    raise exception 'car_id cannot be modified';
+  end if;
+  if new.shared_with_user_id <> old.shared_with_user_id then
+    raise exception 'shared_with_user_id cannot be modified';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_car_share_update_trigger on car_shares;
+create trigger enforce_car_share_update_trigger
+  before update on car_shares
+  for each row execute procedure enforce_car_share_update();
 
 -- parking_locations
 create policy "Users with access can view parking locations"
