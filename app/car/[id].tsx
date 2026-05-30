@@ -64,9 +64,12 @@ export default function CarDetailScreen() {
   const [editPlate, setEditPlate] = useState('');
   const [editEmoji, setEditEmoji] = useState('🚗');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [pickingLocation, setPickingLocation] = useState(false);
+  const [pickedCoord, setPickedCoord] = useState<{ latitude: number; longitude: number } | null>(null);
   const savedNoteRef = useRef('');
   const noteTextRef = useRef('');
   const scrollViewRef = useRef<ScrollView>(null);
+  const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
@@ -93,6 +96,27 @@ export default function CarDetailScreen() {
       }
     };
   }, []);
+
+  // The map is uncontrolled (initialRegion) so the user can freely pan while
+  // picking a spot — recenter imperatively when the saved location changes.
+  useEffect(() => {
+    const l = car?.parking_locations;
+    if (l && !pickingLocation) {
+      mapRef.current?.animateToRegion(
+        { latitude: l.latitude, longitude: l.longitude, latitudeDelta: 0.005, longitudeDelta: 0.005 },
+        400
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [car?.parking_locations?.latitude, car?.parking_locations?.longitude]);
+
+  // Center on the user once their location resolves, if no spot is saved yet.
+  useEffect(() => {
+    if (!car?.parking_locations && userRegion && !pickingLocation) {
+      mapRef.current?.animateToRegion(userRegion, 400);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userRegion]);
 
   async function fetchUserLocation() {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -142,7 +166,41 @@ export default function CarDetailScreen() {
     setLoading(false);
   }
 
-  async function handleSaveLocation() {
+  async function persistLocation(latitude: number, longitude: number): Promise<boolean> {
+    const { error } = await supabase.from('parking_locations').upsert(
+      {
+        car_id: id,
+        latitude,
+        longitude,
+        updated_by_user_id: userId!,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'car_id' }
+    );
+
+    if (error) {
+      Alert.alert(t('common.error'), error.message);
+      return false;
+    }
+    await fetchCar();
+    return true;
+  }
+
+  // Tapping the save/update button offers a choice between the current GPS
+  // position and manually placing a pin on the map.
+  function handleUpdateLocationPress() {
+    Alert.alert(
+      loc ? t('carDetail.updateParkingLocation') : t('carDetail.saveParkingLocation'),
+      t('carDetail.chooseLocationMethod'),
+      [
+        { text: t('carDetail.useCurrentLocation'), onPress: handleUseCurrentLocation },
+        { text: t('carDetail.chooseOnMap'), onPress: startPickingLocation },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]
+    );
+  }
+
+  async function handleUseCurrentLocation() {
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(t('carDetail.permissionDenied'), t('carDetail.locationPermissionRequired'));
@@ -152,28 +210,43 @@ export default function CarDetailScreen() {
     setSavingLocation(true);
     try {
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-
-      const { error } = await supabase.from('parking_locations').upsert(
-        {
-          car_id: id,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          updated_by_user_id: userId!,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'car_id' }
-      );
-
-      if (error) {
-        Alert.alert(t('common.error'), error.message);
-      } else {
-        await fetchCar();
-      }
+      await persistLocation(location.coords.latitude, location.coords.longitude);
     } catch {
       Alert.alert(t('common.error'), t('carDetail.locationError'));
     } finally {
       setSavingLocation(false);
     }
+  }
+
+  function startPickingLocation() {
+    const start = loc
+      ? { latitude: loc.latitude, longitude: loc.longitude }
+      : userRegion
+        ? { latitude: userRegion.latitude, longitude: userRegion.longitude }
+        : null;
+    setPickedCoord(start);
+    setPickingLocation(true);
+
+    const region = loc
+      ? { latitude: loc.latitude, longitude: loc.longitude, latitudeDelta: 0.005, longitudeDelta: 0.005 }
+      : userRegion ?? null;
+    if (region) mapRef.current?.animateToRegion(region, 300);
+  }
+
+  async function handleConfirmPickedLocation() {
+    if (!pickedCoord) return;
+    setSavingLocation(true);
+    const ok = await persistLocation(pickedCoord.latitude, pickedCoord.longitude);
+    setSavingLocation(false);
+    if (ok) {
+      setPickingLocation(false);
+      setPickedCoord(null);
+    }
+  }
+
+  function cancelPicking() {
+    setPickingLocation(false);
+    setPickedCoord(null);
   }
 
   async function handleLeaveVehicle() {
@@ -453,16 +526,52 @@ export default function CarDetailScreen() {
         }}
       />
 
-      <MapView style={styles.map} region={mapRegion} showsUserLocation>
-        {loc && (
-          <Marker
-            coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
-            title={car.name}
-            description={car.license_plate ?? undefined}
-          />
-        )}
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        initialRegion={mapRegion}
+        showsUserLocation
+        onPress={pickingLocation ? (e) => setPickedCoord(e.nativeEvent.coordinate) : undefined}
+      >
+        {pickingLocation
+          ? pickedCoord && (
+              <Marker
+                coordinate={pickedCoord}
+                draggable
+                onDragEnd={(e) => setPickedCoord(e.nativeEvent.coordinate)}
+              />
+            )
+          : loc && (
+              <Marker
+                coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
+                title={car.name}
+                description={car.license_plate ?? undefined}
+              />
+            )}
       </MapView>
 
+      {pickingLocation ? (
+        <View style={[styles.bottomCard, styles.pickingCard]}>
+          <Text style={styles.pickingHint}>{t('carDetail.pickLocationHint')}</Text>
+          <TouchableOpacity
+            style={[shared.button, (savingLocation || !pickedCoord) && shared.buttonDisabled]}
+            onPress={handleConfirmPickedLocation}
+            disabled={savingLocation || !pickedCoord}
+          >
+            {savingLocation
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={shared.buttonText}>{t('carDetail.saveThisLocation')}</Text>
+            }
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.textActionButton}
+            onPress={cancelPicking}
+            disabled={savingLocation}
+          >
+            <Text style={styles.textActionText}>{t('common.cancel')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.bottomCard}>
         <ScrollView ref={scrollViewRef} style={styles.cardScroll} contentContainerStyle={styles.cardContent}>
           {car.license_plate && (
@@ -540,7 +649,7 @@ export default function CarDetailScreen() {
         <View style={styles.buttonSection}>
           <TouchableOpacity
             style={[shared.button, savingLocation && shared.buttonDisabled]}
-            onPress={handleSaveLocation}
+            onPress={handleUpdateLocationPress}
             disabled={savingLocation}
           >
             {savingLocation
@@ -568,6 +677,7 @@ export default function CarDetailScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+      )}
 
       <Modal visible={editModalVisible} transparent animationType="fade">
         <KeyboardAvoidingView
@@ -682,6 +792,16 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 8,
     gap: 16,
+  },
+  pickingCard: {
+    padding: 24,
+    gap: 16,
+  },
+  pickingHint: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   plate: {
     fontSize: 14,
