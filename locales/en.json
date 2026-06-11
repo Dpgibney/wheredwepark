@@ -50,11 +50,6 @@
     "displayNamePlaceholder": "Your name",
     "updateName": "Update Name",
     "contactUs": "Contact Us / Report a Problem",
-    "donate": "Support the App",
-    "donateButton": "Donate {{price}}",
-    "donateThanksTitle": "Thank you!",
-    "donateThanksMessage": "Your support means a lot.",
-    "donateUnavailable": "In-app purchases are not available on this device.",
     "deleteAccount": "Delete Account"
   },
   "deleteAccount": {
@@ -64,6 +59,22 @@
     "emailPlaceholder": "your@email.com",
     "deleteButton": "Delete My Account",
     "failed": "Could not delete account. Please try again or contact support."
+  },
+  "contact": {
+    "title": "Contact Us / Report a Problem",
+    "subjectLabel": "Subject",
+    "subjectPlaceholder": "What's this about?",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Describe your question or problem…",
+    "emailLabel": "Your email (so we can reply)",
+    "emailPlaceholder": "your@email.com",
+    "send": "Send",
+    "sent": "Message Sent",
+    "sentMessage": "Thanks for reaching out — we'll get back to you soon.",
+    "required": "Please enter a subject and a message.",
+    "failed": "Could not send your message. Please try again.",
+    "rateLimitedTitle": "Slow down a moment",
+    "rateLimited": "You've sent a few messages in the last hour. Please try again later."
   },
   "login": {
     "title": "Where'd We Park?",

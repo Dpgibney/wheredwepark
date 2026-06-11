@@ -14,23 +14,11 @@ import {
   Linking,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import {
-  initConnection,
-  endConnection,
-  fetchProducts,
-  requestPurchase,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
-  finishTransaction,
-  type Product,
-} from 'react-native-iap';
 import { supabase } from '@/lib/supabase';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
-const DONATION_SKU = 'a1';
-
-type ActiveSheet = 'password' | 'name' | 'deleteAccount' | null;
+type ActiveSheet = 'password' | 'name' | 'deleteAccount' | 'contact' | null;
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -55,63 +43,11 @@ export default function SettingsScreen() {
   const [deleteEmailInput, setDeleteEmailInput] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  // Donation
-  const [donationProduct, setDonationProduct] = useState<Product | null>(null);
-  const [donating, setDonating] = useState(false);
-
-  useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-
-    let purchaseListener: ReturnType<typeof purchaseUpdatedListener>;
-    let errorListener: ReturnType<typeof purchaseErrorListener>;
-
-    initConnection().then(() => {
-      fetchProducts({ skus: [DONATION_SKU] }).then(products => {
-        const p = products?.[0];
-        if (p) setDonationProduct(p as Product);
-      });
-
-      purchaseListener = purchaseUpdatedListener(async purchase => {
-        if (purchase.transactionId) {
-          await finishTransaction({ purchase, isConsumable: true });
-          setDonating(false);
-          Alert.alert(t('settings.donateThanksTitle'), t('settings.donateThanksMessage'));
-        }
-      });
-
-      errorListener = purchaseErrorListener(error => {
-        if ((error as any).code !== 'E_USER_CANCELLED') {
-          Alert.alert(t('common.error'), error.message);
-        }
-        setDonating(false);
-      });
-    }).catch(() => setDonationProduct(null));
-
-    return () => {
-      purchaseListener?.remove();
-      errorListener?.remove();
-      endConnection();
-    };
-  }, []);
-
-  async function handleDonate() {
-    if (!donationProduct) {
-      Alert.alert(t('common.error'), t('settings.donateUnavailable'));
-      return;
-    }
-    setDonating(true);
-    try {
-      await requestPurchase({
-        request: { apple: { sku: DONATION_SKU } },
-        type: 'in-app',
-      });
-    } catch (err: any) {
-      if (err?.code !== 'E_USER_CANCELLED') {
-        Alert.alert(t('common.error'), err.message);
-      }
-      setDonating(false);
-    }
-  }
+  // Contact / report a problem fields
+  const [contactSubject, setContactSubject] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [sendingContact, setSendingContact] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -129,6 +65,7 @@ export default function SettingsScreen() {
 
   function openSheet(sheet: ActiveSheet) {
     if (sheet === 'name') setNameInput(displayName ?? '');
+    if (sheet === 'contact') setContactEmail(email ?? '');
     setActiveSheet(sheet);
     slideAnim.setValue(600);
     Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
@@ -143,6 +80,9 @@ export default function SettingsScreen() {
     setConfirmPassword('');
     setNameInput('');
     setDeleteEmailInput('');
+    setContactSubject('');
+    setContactMessage('');
+    setContactEmail('');
   }
 
   async function handleChangePassword() {
@@ -225,6 +165,51 @@ export default function SettingsScreen() {
     await supabase.auth.signOut();
   }
 
+  async function handleSubmitContact() {
+    const subject = contactSubject.trim();
+    const message = contactMessage.trim();
+    if (subject.length === 0 || message.length === 0) {
+      Alert.alert(t('contact.required'));
+      return;
+    }
+    setSendingContact(true);
+    const { error } = await supabase.functions.invoke('contact-support', {
+      method: 'POST',
+      body: {
+        subject,
+        message,
+        contactEmail: contactEmail.trim(),
+        platform: `${Platform.OS} ${Platform.Version}`,
+      },
+    });
+    setSendingContact(false);
+    if (error) {
+      // supabase-js exposes the HTTP response on error.context; a 429 means the
+      // per-user hourly rate limit was hit (see the contact-support function).
+      const ctx = (error as any).context;
+      if (ctx?.status === 429) {
+        Alert.alert(t('contact.rateLimitedTitle'), t('contact.rateLimited'));
+        return;
+      }
+      // Surface the server-side reason (mirrors the delete-account handler) so
+      // config/setup failures are diagnosable instead of a generic message.
+      let detail = error.message ?? t('contact.failed');
+      if (ctx && typeof ctx.text === 'function') {
+        try {
+          const body = await ctx.text();
+          if (body) detail = `${ctx.status}: ${body}`;
+        } catch {}
+      }
+      Alert.alert(t('common.error'), detail);
+      return;
+    }
+    Alert.alert(t('contact.sent'), t('contact.sentMessage'));
+    closeSheet();
+  }
+
+  const contactSendDisabled =
+    sendingContact || contactSubject.trim().length === 0 || contactMessage.trim().length === 0;
+
   const passwordSaveDisabled =
     changingPassword ||
     currentPassword.length === 0 ||
@@ -265,33 +250,10 @@ export default function SettingsScreen() {
           <Text style={styles.rowButtonText}>{t('settings.privacyPolicy')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
-        <TouchableOpacity
-          style={styles.rowButton}
-          onPress={() => Linking.openURL('mailto:support@wheredwepark.com?subject=Where%27d%20We%20Park%20-%20Feedback')}
-        >
+        <TouchableOpacity style={styles.rowButton} onPress={() => openSheet('contact')}>
           <Text style={styles.rowButtonText}>{t('settings.contactUs')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
-        {Platform.OS === 'ios' && (
-          <>
-            <TouchableOpacity
-              style={styles.rowButton}
-              onPress={handleDonate}
-              disabled={donating}
-            >
-              {donating ? (
-                <ActivityIndicator color={colors.brand} />
-              ) : (
-                <Text style={styles.rowButtonText}>
-                  {donationProduct
-                    ? t('settings.donateButton', { price: donationProduct.displayPrice })
-                    : t('settings.donate')}
-                </Text>
-              )}
-            </TouchableOpacity>
-            <View style={styles.divider} />
-          </>
-        )}
         <TouchableOpacity style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
           <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
         </TouchableOpacity>
@@ -432,6 +394,59 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </Animated.View>
           )}
+
+          {activeSheet === 'contact' && (
+            <Animated.View style={[shared.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+              <Text style={shared.editTitle}>{t('contact.title')}</Text>
+
+              <Text style={shared.editLabel}>{t('contact.subjectLabel')}</Text>
+              <TextInput
+                style={shared.editInput}
+                value={contactSubject}
+                onChangeText={setContactSubject}
+                placeholder={t('contact.subjectPlaceholder')}
+                maxLength={200}
+              />
+
+              <Text style={shared.editLabel}>{t('contact.messageLabel')}</Text>
+              <TextInput
+                style={[shared.editInput, styles.contactMessageInput]}
+                value={contactMessage}
+                onChangeText={setContactMessage}
+                placeholder={t('contact.messagePlaceholder')}
+                multiline
+                textAlignVertical="top"
+                maxLength={5000}
+              />
+
+              <Text style={shared.editLabel}>{t('contact.emailLabel')}</Text>
+              <TextInput
+                style={shared.editInput}
+                value={contactEmail}
+                onChangeText={setContactEmail}
+                placeholder={t('contact.emailPlaceholder')}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+
+              <TouchableOpacity
+                style={[shared.button, contactSendDisabled && shared.buttonDisabled]}
+                onPress={handleSubmitContact}
+                disabled={contactSendDisabled}
+              >
+                {sendingContact ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={shared.buttonText}>{t('contact.send')}</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
+                <Text style={styles.cancelLinkText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -525,5 +540,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: 12,
+  },
+  contactMessageInput: {
+    minHeight: 110,
   },
 });
