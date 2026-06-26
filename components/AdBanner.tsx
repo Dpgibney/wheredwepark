@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { initializeAds } from '@/lib/ads';
 
 const ANDROID_AD_UNIT_ID = __DEV__
   ? TestIds.ADAPTIVE_BANNER
@@ -16,8 +17,19 @@ const adUnitId =
 
 export default function AdBanner() {
   const [failed, setFailed] = useState(false);
+  // No ads until the consent flow (UMP form + iOS ATT prompt) has finished
+  // and confirmed ads may be requested.
+  const [canShow, setCanShow] = useState(false);
 
-  if (failed) return null;
+  useEffect(() => {
+    let mounted = true;
+    initializeAds().then((ok) => {
+      if (mounted) setCanShow(ok);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  if (!canShow || failed) return null;
 
   return (
     <BannerAd

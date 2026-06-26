@@ -7,15 +7,25 @@
 -- SCHEMA PERMISSIONS (required for PostgreSQL 15+ / new Supabase projects)
 -- ------------------------------------------------------------
 
--- authenticated role gets full access; anon gets none (all app actions require auth)
+-- authenticated role gets DML only; anon gets none (all app actions require
+-- auth). Deliberately not GRANT ALL: that would include TRUNCATE, which RLS
+-- does not apply to.
 grant usage on schema public to authenticated;
-grant all on all tables in schema public to authenticated;
-grant all on all sequences in schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
 
 alter default privileges in schema public
-  grant all on tables to authenticated;
+  grant select, insert, update, delete on tables to authenticated;
 alter default privileges in schema public
-  grant all on sequences to authenticated;
+  grant usage, select on sequences to authenticated;
+
+-- Supabase's project template may have granted anon access to public tables
+-- via its own default privileges. anon has no RLS policies so rows were never
+-- visible, but strip the grants for defense in depth.
+revoke all on all tables    in schema public from anon;
+revoke all on all sequences in schema public from anon;
+alter default privileges in schema public revoke all on tables    from anon;
+alter default privileges in schema public revoke all on sequences from anon;
 
 -- ------------------------------------------------------------
 -- TABLES
@@ -68,6 +78,8 @@ language plpgsql
 set search_path = public, pg_temp
 as $$
 begin
+  -- Serialize per owner so concurrent inserts can't both pass the count.
+  perform pg_advisory_xact_lock(hashtext('car_limit:' || new.owner_id::text));
   if (select count(*) from cars where owner_id = new.owner_id) >= 10 then
     raise exception 'Car limit reached. A user may only add up to 10 vehicles.';
   end if;
@@ -116,11 +128,14 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
+  -- left(..., 100): an oversized display_name in raw_user_meta_data would
+  -- otherwise trip the profiles check constraint and abort the signup.
   insert into public.profiles (id, email, display_name)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1))
+    left(coalesce(new.raw_user_meta_data->>'display_name',
+                  split_part(new.email, '@', 1)), 100)
   );
   return new;
 end;
@@ -377,7 +392,13 @@ begin
   if new.car_id <> old.car_id then
     raise exception 'car_id cannot be modified';
   end if;
-  if new.updated_by_user_id <> old.updated_by_user_id
+  -- IS DISTINCT FROM: updated_by_user_id is nullable (ON DELETE SET NULL), and
+  -- a plain <> comparison is never true against NULL, which would let a user
+  -- forge attribution once the column has been nulled. Transition to NULL must
+  -- stay allowed — the FK's SET NULL update fires this trigger with no auth
+  -- context.
+  if new.updated_by_user_id is distinct from old.updated_by_user_id
+     and new.updated_by_user_id is not null
      and new.updated_by_user_id <> auth.uid() then
     raise exception 'updated_by_user_id can only be set to the current user';
   end if;
@@ -436,9 +457,14 @@ select cron.schedule(
 -- Depends on user_has_car_access — must come after helper function
 -- ------------------------------------------------------------
 
-insert into storage.buckets (id, name, public)
-values ('parking-images', 'parking-images', false)
-on conflict (id) do nothing;
+-- 5 MB JPEG-only: the path is pinned by policy below, but without these caps
+-- any user with car access could park huge files or non-image content (e.g.
+-- HTML) that would then be served from the storage domain via signed URLs.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('parking-images', 'parking-images', false, 5242880, array['image/jpeg'])
+on conflict (id) do update
+  set file_size_limit    = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
 
 create policy "Users with car access can view parking images"
   on storage.objects for select

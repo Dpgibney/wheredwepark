@@ -71,7 +71,13 @@
       ],
       "expo-font",
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "This identifier will be used to deliver ads relevant to your interests. The app never shares your parking locations or personal data with advertisers."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

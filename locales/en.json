@@ -27,6 +27,7 @@
     "changeName": "Change Name",
     "changePassword": "Change Password",
     "privacyPolicy": "Privacy Policy",
+    "adPrivacy": "Ad Privacy Options",
     "signOut": "Sign Out",
     "tooShort": "Too short",
     "passwordTooShort": "New password must be at least 8 characters.",

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { adPrivacyOptionsRequired, showAdPrivacyOptions } from '@/lib/ads';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
@@ -28,6 +29,10 @@ export default function SettingsScreen() {
 
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const slideAnim = useRef(new Animated.Value(600)).current;
+
+  // Google's UMP policy: users shown the GDPR consent form must be able to
+  // revisit their choices, so surface the row only when the SDK requires it.
+  const [showAdPrivacyRow, setShowAdPrivacyRow] = useState(false);
 
   // Password fields
   const [currentPassword, setCurrentPassword] = useState('');
@@ -61,6 +66,7 @@ export default function SettingsScreen() {
         .single()
         .then(({ data }) => setDisplayName(data?.display_name ?? null));
     });
+    adPrivacyOptionsRequired().then(setShowAdPrivacyRow);
   }, []);
 
   function openSheet(sheet: ActiveSheet) {
@@ -250,6 +256,17 @@ export default function SettingsScreen() {
           <Text style={styles.rowButtonText}>{t('settings.privacyPolicy')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
+        {showAdPrivacyRow && (
+          <>
+            <TouchableOpacity
+              style={styles.rowButton}
+              onPress={() => showAdPrivacyOptions().catch(() => {})}
+            >
+              <Text style={styles.rowButtonText}>{t('settings.adPrivacy')}</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
+          </>
+        )}
         <TouchableOpacity style={styles.rowButton} onPress={() => openSheet('contact')}>
           <Text style={styles.rowButtonText}>{t('settings.contactUs')}</Text>
         </TouchableOpacity>
