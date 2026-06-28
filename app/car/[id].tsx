@@ -20,6 +20,7 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { upsertParkingLocation } from '@/lib/parking';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
@@ -167,16 +168,12 @@ export default function CarDetailScreen() {
   }
 
   async function persistLocation(latitude: number, longitude: number): Promise<boolean> {
-    const { error } = await supabase.from('parking_locations').upsert(
-      {
-        car_id: id,
-        latitude,
-        longitude,
-        updated_by_user_id: userId!,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'car_id' }
-    );
+    const { error } = await upsertParkingLocation({
+      carId: id,
+      latitude,
+      longitude,
+      userId: userId!,
+    });
 
     if (error) {
       Alert.alert(t('common.error'), error.message);

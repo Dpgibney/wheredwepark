@@ -14,6 +14,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { upsertParkingLocation } from '@/lib/parking';
+import { parkBridge } from '@/lib/parkBridge';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
@@ -71,8 +73,14 @@ export default function HomeScreen() {
       .select('id, name, license_plate, owner_id, emoji, parking_locations(latitude, longitude, updated_at)')
       .order('created_at', { ascending: false });
 
-    if (error) Alert.alert(t('common.error'), error.message);
-    else setCars(data ?? []);
+    if (error) {
+      Alert.alert(t('common.error'), error.message);
+    } else {
+      const fetched = data ?? [];
+      setCars(fetched);
+      // Keep the native Park Car App Intent's car picker in sync.
+      parkBridge.syncCars(fetched.map(c => ({ id: c.id, name: c.name })));
+    }
   }
 
   async function fetchPendingInvites() {
@@ -150,16 +158,12 @@ export default function HomeScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
 
-      const { error } = await supabase.from('parking_locations').upsert(
-        {
-          car_id: carId,
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          updated_by_user_id: user!.id,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'car_id' }
-      );
+      const { error } = await upsertParkingLocation({
+        carId,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        userId: user!.id,
+      });
 
       if (error) {
         Alert.alert(t('common.error'), error.message);

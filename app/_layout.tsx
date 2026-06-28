@@ -4,7 +4,8 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { parkBridge } from '@/lib/parkBridge';
 import '@/lib/i18n';
 
 export default function RootLayout() {
@@ -15,13 +16,39 @@ export default function RootLayout() {
   const { t } = useTranslation();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Give the native Park Car App Intent the Supabase config + notification
+    // permission it needs to run in the background (no-op off iOS).
+    parkBridge.syncConfig(supabaseUrl, supabaseAnonKey);
+    parkBridge.requestNotifications();
+
+    async function init() {
+      // The background intent rotates the refresh token when it parks while the app
+      // is closed. Adopt its latest tokens BEFORE getSession() so the JS client
+      // doesn't refresh with a now-stale token (which would log the user out).
+      const adopted = parkBridge.readAuth();
+      if (adopted) {
+        try {
+          await supabase.auth.setSession(adopted);
+        } catch {
+          // stale/invalid copy — fall through to the stored JS session
+        }
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setLoading(false);
-    });
+      parkBridge.syncAuth(session);
+    }
+    init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      // Keep the background App Intent's copy of the session current.
+      if (event === 'SIGNED_OUT') {
+        parkBridge.clearAuth();
+      } else {
+        parkBridge.syncAuth(session);
+      }
     });
 
     return () => subscription.unsubscribe();
