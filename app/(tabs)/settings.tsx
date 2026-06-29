@@ -251,7 +251,7 @@ export default function SettingsScreen() {
         <View style={styles.divider} />
         <TouchableOpacity
           style={styles.rowButton}
-          onPress={() => Linking.openURL('https://doc-hosting.flycricket.io/wheredwepark-privacy-policy/84cadd06-966f-4e6c-bd3e-1eb6bd0c8a5d/privacy')}
+          onPress={() => Linking.openURL('https://dpgibney.github.io/wheredwepark/privacy.html')}
         >
           <Text style={styles.rowButtonText}>{t('settings.privacyPolicy')}</Text>
         </TouchableOpacity>
