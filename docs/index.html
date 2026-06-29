@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Where'd We Park — Support</title>
+  <meta name="description" content="Support and help for the Where'd We Park app: save where you parked, share vehicles, and get in touch with us." />
+  <style>
+    :root {
+      --blue: #2563EB;
+      --blue-dark: #1D4ED8;
+      --bg: #F9FAFB;
+      --text: #111827;
+      --muted: #6B7280;
+      --border: #E5E7EB;
+      --card: #FFFFFF;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header {
+      background: var(--blue);
+      color: #fff;
+      padding: 56px 24px 48px;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 1.9rem;
+      letter-spacing: -0.02em;
+    }
+    header p {
+      margin: 0;
+      opacity: 0.92;
+      font-size: 1.05rem;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px 24px;
+      margin: 0 0 20px;
+    }
+    h2 {
+      font-size: 1.2rem;
+      margin: 0 0 12px;
+      letter-spacing: -0.01em;
+    }
+    p { margin: 0 0 12px; }
+    p:last-child { margin-bottom: 0; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .btn {
+      display: inline-block;
+      background: var(--blue);
+      color: #fff;
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .btn:hover { background: var(--blue-dark); text-decoration: none; }
+    .muted { color: var(--muted); font-size: 0.95rem; }
+    details {
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    details:last-of-type { border-bottom: none; }
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      list-style: none;
+      outline: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+";
+      float: right;
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+    details[open] summary::after { content: "\2013"; }
+    details p { margin-top: 10px; }
+    footer {
+      text-align: center;
+      padding: 28px 20px 48px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    footer a { color: var(--muted); text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Where'd We Park</h1>
+    <p>Save where you parked. Find it again. Share with anyone.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Need help?</h2>
+      <p>We're happy to help with any question, bug, or feedback about the app. The fastest way to reach us is by email — we read every message.</p>
+      <p><a class="btn" href="mailto:support@wheredwepark.com?subject=Where'd%20We%20Park%20Support">Email Support</a></p>
+      <p class="muted">support@wheredwepark.com — we aim to reply within a couple of days.</p>
+      <p class="muted">You can also reach us from inside the app: <strong>Settings → Contact Us</strong>.</p>
+    </section>
+
+    <section class="card">
+      <h2>Frequently asked questions</h2>
+
+      <details>
+        <summary>How do I save where I parked?</summary>
+        <p>Open a vehicle, then tap <strong>Save parking spot</strong>. The app saves your current location, or you can drop a pin on the map to park the car somewhere other than where you're standing. You can also add a note and a photo.</p>
+      </details>
+
+      <details>
+        <summary>How do I find my car later?</summary>
+        <p>Open the vehicle to see its saved spot on the map. Tap the location to open directions in Apple Maps, Google Maps, or Waze.</p>
+      </details>
+
+      <details>
+        <summary>How does sharing a vehicle work?</summary>
+        <p>From a vehicle you own, open its share screen and enter the email address of someone with an account. They'll see a pending invite on their home screen and must accept it before they can view the parking location. Either person can stop sharing at any time, which immediately removes access.</p>
+      </details>
+
+      <details>
+        <summary>Why does the app ask for my location?</summary>
+        <p>Location is used only while you're using the app, to save your parking spot and show your position on the map. It's never tracked in the background. You can decline the permission and still use the app by placing pins on the map manually.</p>
+      </details>
+
+      <details>
+        <summary>How do I delete my account?</summary>
+        <p>Go to <strong>Settings → Delete Account</strong> in the app. This permanently removes your account, vehicles, saved spots, notes, and photos. You can also email us to request deletion.</p>
+      </details>
+
+      <details>
+        <summary>Why am I seeing ads?</summary>
+        <p>The app is free and supported by banner ads from Google AdMob. Where required, you can adjust personalization in <strong>Settings → Ad Privacy Options</strong>. We never share your account, vehicle, or parking data with advertisers.</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Privacy</h2>
+      <p>Read how the app handles your data in our <a href="privacy.html">Privacy Policy</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Daniel Gibney · <a href="privacy.html">Privacy Policy</a> · <a href="mailto:support@wheredwepark.com">Contact</a></p>
+  </footer>
+</body>
+</html>
