@@ -1,6 +1,6 @@
 # Privacy Policy — Where'd We Park
 
-**Effective date: 2026-10-05**
+**Effective date: 2026-10-06**
 
 This privacy policy applies to the Where'd We Park mobile application (the "App"), provided by Daniel Gibney ("we", "us") as a free, ad-supported service. It explains what information the App collects, how it is used and shared, and the choices you have.
 
@@ -32,13 +32,22 @@ You can decline the location permission and still use the App by placing parking
 
 Sharing vehicles is a core feature of the App. If you share a vehicle, or accept a share from someone else, be aware of what becomes visible:
 
-- To invite someone, you enter their email address. We use it to look up whether a matching account exists. If one does, that person receives an invitation, and you can see their display name and email address in your sharing list, even before they respond.
+- To invite someone, you enter their email address. We use it to look up whether a matching account exists. If one does, we save the address with the invitation, the person sees it in the App (and gets a notification, if they allow notifications), and you can see their display name and email address in your sharing list, even before they respond.
 - Before accepting, the person you invite can see the vehicle's name, icon, and license plate, and your display name and email address.
 - Everyone a vehicle is shared with (after accepting) can see that vehicle's saved parking location, the time it was parked, the note and photo attached to it, the vehicle's name and license plate, and the display name and email address of the person who last saved the spot.
 - Shared users can also update the parking location, note, and photo.
 - You can stop sharing at any time: owners can revoke a share, and recipients can leave a shared vehicle. Doing so removes the other person's access right away, although a photo their App had already loaded can stay viewable for up to an hour.
 
 Do not share a vehicle with anyone you do not want to see this information.
+
+## Notifications
+
+If you allow notifications, the App gets a push token for your device from Apple or Google (through our push provider, Expo), and we store it linked to your account so we can reach that device. We use it to send:
+
+- a notification when someone invites you to share a vehicle; and
+- for vehicles where you turn it on, a notification when someone else saves a new parking spot for that vehicle.
+
+Notifications show the vehicle's name and the display name of the person involved. They never include the location. You can turn parking notifications on or off for each vehicle in the App, and turn off all notifications in your phone's settings. Signing out removes the link between your account and the device.
 
 ## Advertising
 
@@ -65,6 +74,7 @@ We use a small number of third-party providers to operate the App. Each receives
 - **Supabase** — hosts our database, authentication, and file storage. All account, vehicle, parking, and photo data described above is stored with Supabase.
 - **Google AdMob** — serves banner advertisements (see "Advertising" above).
 - **Resend** — delivers support-request emails from the in-app contact form to our support inbox.
+- **Expo** — delivers push notifications to Apple's and Google's notification services. It receives your device's push token and the text of each notification.
 
 We do not sell your personal information, and we do not share it with third parties for their own marketing purposes.
 
@@ -72,7 +82,7 @@ We do not sell your personal information, and we do not share it with third part
 
 We use the information described above only to:
 
-- provide the App's features (saving and finding parking spots, sharing vehicles, displaying your profile to people you share with);
+- provide the App's features (saving and finding parking spots, sharing vehicles, sending the notifications you have allowed, displaying your profile to people you share with);
 - respond to support requests you send us;
 - display advertisements that keep the App free;
 - maintain the security and integrity of the service; and
@@ -86,11 +96,12 @@ We do not send marketing or promotional emails. The only emails you will receive
 - **Saved parking locations** are overwritten each time you save a new spot for a vehicle — we keep only the current spot, not a history of past locations (apart from the backups described below).
 - **Support requests** are deleted from our database within 30 days of submission. The email copy in our support inbox is kept as long as needed to resolve your request.
 - **Backups.** We keep encrypted daily backups of our database for up to 90 days so we can recover from failures. A backup can still contain information you have since changed or deleted, such as earlier parking spots, support requests, or a deleted account, until it expires. Photos are not included in backups.
+- **Push tokens** are kept while you are signed in on a device, and removed when you sign out, delete your account, or the device stops accepting notifications. A short record of which notifications we sent (recipient, type, and vehicle, but not the text) is kept for one day to avoid sending duplicates.
 - **Operational logs** held by our hosting providers are retained for short periods according to their policies.
 
 ## Deleting your account and data
 
-You can delete your account at any time directly in the App: **Settings → Delete Account**. This permanently deletes your account, profile, vehicles, saved parking locations, notes, photos, and shares. Vehicles others shared with you are unaffected (you are simply removed from them); parking spots, notes, and photos you saved on those vehicles stay with them, without your name. Copies in our encrypted backups expire within 90 days.
+You can delete your account at any time directly in the App: **Settings → Delete Account**. This permanently deletes your account, profile, vehicles, saved parking locations, notes, photos, shares, push tokens, and notification settings. Vehicles others shared with you are unaffected (you are simply removed from them); parking spots, notes, and photos you saved on those vehicles stay with them, without your name. Copies in our encrypted backups expire within 90 days.
 
 You may also email us at **support@wheredwepark.com** to request deletion, or to request a copy or correction of the personal information we hold about you. We will respond within a reasonable time.
 

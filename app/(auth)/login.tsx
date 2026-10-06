@@ -1,18 +1,15 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '@/lib/supabase';
+import { Text, TextInput } from '@/components/ui/text';
 import { shared } from '@/styles/shared';
 
 export default function LoginScreen() {
@@ -39,68 +36,68 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={shared.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      contentContainerStyle={styles.inner}
+      keyboardShouldPersistTaps="handled"
+      bottomOffset={24}
     >
-      <View style={styles.inner}>
-        <Text style={shared.title}>{t('login.title')}</Text>
-        <Text style={shared.subtitle}>{t('login.subtitle')}</Text>
+      <Text style={shared.title}>{t('login.title')}</Text>
+      <Text style={shared.subtitle}>{t('login.subtitle')}</Text>
 
-        <TextInput
-          style={shared.input}
-          placeholder={t('login.emailPlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-        />
+      <TextInput
+        style={shared.input}
+        placeholder={t('login.emailPlaceholder')}
+        placeholderTextColor="#9CA3AF"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+      />
 
-        <TextInput
-          style={shared.input}
-          placeholder={t('login.passwordPlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          textContentType="password"
-        />
+      <TextInput
+        style={shared.input}
+        placeholder={t('login.passwordPlaceholder')}
+        placeholderTextColor="#9CA3AF"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        textContentType="password"
+      />
 
-        <TouchableOpacity
-          style={[shared.button, loading && shared.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={shared.buttonText}>{t('login.signIn')}</Text>
-          }
+      <TouchableOpacity
+        style={[shared.button, loading && shared.buttonDisabled]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={shared.buttonText}>{t('login.signIn')}</Text>
+        }
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={shared.linkButton}
+        onPress={() => router.push('/(auth)/forgot-password' as any)}
+      >
+        <Text style={shared.linkText}>{t('login.forgotPassword')}</Text>
+      </TouchableOpacity>
+
+      <Link href="/(auth)/register" asChild>
+        <TouchableOpacity style={shared.linkButton}>
+          <Text style={shared.linkText}>
+            {t('login.noAccount')}<Text style={shared.linkTextBold}>{t('login.signUp')}</Text>
+          </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={shared.linkButton}
-          onPress={() => router.push('/(auth)/forgot-password' as any)}
-        >
-          <Text style={shared.linkText}>{t('login.forgotPassword')}</Text>
-        </TouchableOpacity>
-
-        <Link href="/(auth)/register" asChild>
-          <TouchableOpacity style={shared.linkButton}>
-            <Text style={shared.linkText}>
-              {t('login.noAccount')}<Text style={shared.linkTextBold}>{t('login.signUp')}</Text>
-            </Text>
-          </TouchableOpacity>
-        </Link>
-      </View>
-    </KeyboardAvoidingView>
+      </Link>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },

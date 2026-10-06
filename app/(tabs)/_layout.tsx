@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Keyboard, Platform } from 'react-native';
+import { View, Keyboard, Platform } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import AdBanner from '@/components/AdBanner';
+import { HeaderIconButton } from '@/components/ui/header-button';
+import { tabScreenOptions } from '@/constants/navigation';
 
 export default function TabLayout() {
   const router = useRouter();
@@ -21,7 +23,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      screenOptions={{ tabBarActiveTintColor: '#2563EB' }}
+      screenOptions={tabScreenOptions}
       tabBar={(props) => keyboardVisible ? null : (
         <View>
           <AdBanner />
@@ -35,12 +37,12 @@ export default function TabLayout() {
           title: t('layout.myVehicles'),
           tabBarIcon: ({ color, size }) => <Ionicons name="car" size={size} color={color} />,
           headerRight: () => (
-            <TouchableOpacity
+            <HeaderIconButton
+              icon="add"
+              accessibilityLabel={t('layout.addVehicle')}
               onPress={() => router.push('/add-car')}
               style={{ marginRight: 16 }}
-            >
-              <Text style={{ fontSize: 28, color: '#2563EB', lineHeight: 32 }}>+</Text>
-            </TouchableOpacity>
+            />
           ),
         }}
       />

@@ -94,6 +94,8 @@
     }
     details[open] summary::after { content: "\2013"; }
     details p { margin-top: 10px; }
+    details ol { margin: 10px 0 0; padding-left: 22px; }
+    details li { margin-bottom: 6px; }
     footer {
       text-align: center;
       padding: 28px 20px 48px;
@@ -138,7 +140,26 @@
 
       <details>
         <summary>Why does the app ask for my location?</summary>
-        <p>Location is used only while you're using the app, to save your parking spot and show your position on the map. It's never tracked in the background. You can decline the permission and still use the app by placing pins on the map manually.</p>
+        <p>Location is used to save your parking spot and to show your position on the map. On iPhone, the Park My Car shortcut (below) takes a single location reading each time it runs, even if the app is closed. The app never tracks your location continuously. You can decline the permission and still use the app by placing pins on the map manually.</p>
+      </details>
+
+      <!-- Keep in sync with the in-app instructions in app/siri-shortcut.tsx. -->
+      <details>
+        <summary>Can my iPhone save my spot automatically?</summary>
+        <p>Yes. Say <strong>"Park my car with wheredwepark"</strong> to Siri, or set up an automation so your iPhone parks the car for you when you leave it:</p>
+        <ol>
+          <li>Open the <strong>Shortcuts</strong> app and tap <strong>Automation</strong>.</li>
+          <li>Tap <strong>+</strong> and choose when to park: <strong>CarPlay</strong> (Disconnects), <strong>Bluetooth</strong> (pick your car, then Is Disconnected), or <strong>NFC</strong> (scan a tag you keep in your car).</li>
+          <li>Choose <strong>Run Immediately</strong>, then tap <strong>Next</strong>. On older versions of iOS, turn off <strong>Ask Before Running</strong> instead.</li>
+          <li>Tap <strong>New Blank Automation</strong>, then <strong>Add Action</strong>. Search for <strong>Park My Car</strong> and choose it under wheredwepark.</li>
+          <li>Tap <strong>Car</strong> in the action, pick the vehicle to park, then tap <strong>Done</strong>.</li>
+        </ol>
+        <p>Open the app once after signing in or adding a vehicle so the shortcut knows your vehicles, and allow location (with Precise Location on) and notifications. It works while your phone is locked, and you'll get a notification each time a spot is saved. These steps are also in the app under <strong>Settings → Auto-park with Siri</strong>.</p>
+      </details>
+
+      <details>
+        <summary>What notifications does the app send?</summary>
+        <p>If you allow notifications, you'll get one when someone shares a vehicle with you. You can also choose to be notified whenever someone else parks a particular vehicle: open the vehicle and turn on <strong>Notify me when this car is parked</strong>. Notifications show the vehicle's name and who parked it, never the location. You can turn notifications off at any time in your phone's settings.</p>
       </details>
 
       <details>

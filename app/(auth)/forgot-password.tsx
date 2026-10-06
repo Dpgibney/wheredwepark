@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '@/lib/supabase';
+import { Text, TextInput } from '@/components/ui/text';
+import { text } from '@/constants/typography';
 import { shared } from '@/styles/shared';
 
 export default function ForgotPasswordScreen() {
@@ -55,60 +54,59 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={shared.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      contentContainerStyle={styles.inner}
+      keyboardShouldPersistTaps="handled"
+      bottomOffset={24}
     >
-      <View style={styles.inner}>
-        <Text style={shared.title}>{t('forgotPassword.title')}</Text>
-        <Text style={[shared.subtitle, styles.subtitleNarrow]}>{t('forgotPassword.subtitle')}</Text>
+      <Text style={shared.title}>{t('forgotPassword.title')}</Text>
+      <Text style={[shared.subtitle, styles.subtitleNarrow]}>{t('forgotPassword.subtitle')}</Text>
 
-        <TextInput
-          style={shared.input}
-          placeholder={t('forgotPassword.emailPlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          autoFocus
-          returnKeyType="send"
-          onSubmitEditing={handleSend}
-        />
+      <TextInput
+        style={shared.input}
+        placeholder={t('forgotPassword.emailPlaceholder')}
+        placeholderTextColor="#9CA3AF"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        autoFocus
+        returnKeyType="send"
+        onSubmitEditing={handleSend}
+      />
 
-        <TouchableOpacity
-          style={[shared.button, loading && shared.buttonDisabled]}
-          onPress={handleSend}
-          disabled={loading}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={shared.buttonText}>{t('forgotPassword.sendButton')}</Text>
-          }
-        </TouchableOpacity>
+      <TouchableOpacity
+        style={[shared.button, loading && shared.buttonDisabled]}
+        onPress={handleSend}
+        disabled={loading}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={shared.buttonText}>{t('forgotPassword.sendButton')}</Text>
+        }
+      </TouchableOpacity>
 
-        <TouchableOpacity style={shared.linkButton} onPress={() => router.back()}>
-          <Text style={styles.backLink}>{t('forgotPassword.backToLogin')}</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      <TouchableOpacity style={shared.linkButton} onPress={() => router.back()}>
+        <Text style={styles.backLink}>{t('forgotPassword.backToLogin')}</Text>
+      </TouchableOpacity>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
   subtitleNarrow: {
-    fontSize: 15,
+    ...text.body,
     lineHeight: 22,
   },
   backLink: {
+    ...text.bodyMedium,
     color: '#2563EB',
-    fontSize: 15,
-    fontWeight: '500',
   },
 });

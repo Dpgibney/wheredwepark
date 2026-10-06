@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   FlatList,
   StyleSheet,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useHeaderHeight } from '@react-navigation/elements';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { supabase } from '@/lib/supabase';
+import { Text, TextInput } from '@/components/ui/text';
+import { text } from '@/constants/typography';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
@@ -21,6 +21,9 @@ type Share = {
   id: string;
   shared_with_user_id: string;
   status: 'pending' | 'accepted';
+  // The address the owner typed (set by invite_to_car). Null on invites
+  // created before the column existed.
+  invited_email: string | null;
   profiles: {
     display_name: string | null;
     email: string;
@@ -30,6 +33,7 @@ type Share = {
 export default function ShareScreen() {
   const { id: carId } = useLocalSearchParams<{ id: string }>();
   const { t } = useTranslation();
+  const headerHeight = useHeaderHeight();
 
   const [shares, setShares] = useState<Share[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,14 +47,14 @@ export default function ShareScreen() {
   async function fetchShares() {
     const { data, error } = await supabase
       .from('car_shares')
-      .select('id, shared_with_user_id, status, profiles(display_name, email)')
+      .select('id, shared_with_user_id, status, invited_email, profiles(display_name, email)')
       .eq('car_id', carId)
       .order('created_at', { ascending: true });
 
     if (error) {
       Alert.alert(t('common.error'), error.message);
     } else {
-      setShares(data ?? []);
+      setShares((data ?? []) as unknown as Share[]);
     }
     setLoading(false);
   }
@@ -63,7 +67,7 @@ export default function ShareScreen() {
     // server-side RPC stays opaque about whether an arbitrary email is
     // registered. shares already contains the email of everyone the owner
     // has invited, so no extra lookup is needed.
-    const alreadyShared = shares.some(s => s.profiles?.email?.toLowerCase() === trimmed);
+    const alreadyShared = shares.some(s => (s.invited_email ?? s.profiles?.email)?.toLowerCase() === trimmed);
     if (alreadyShared) {
       Alert.alert(t('share.alreadyInvited'), t('share.alreadyInvitedMessage'));
       return;
@@ -87,8 +91,8 @@ export default function ShareScreen() {
 
   async function handleRemove(share: Share) {
     const profile = share.profiles;
-    const name = profile?.display_name ?? profile?.email ?? 'this user';
     const isPending = share.status === 'pending';
+    const name = (isPending ? share.invited_email : profile?.display_name) ?? profile?.email ?? 'this user';
     Alert.alert(
       isPending ? t('share.cancelInvite') : t('share.removeAccess'),
       isPending
@@ -121,7 +125,8 @@ export default function ShareScreen() {
   return (
     <KeyboardAvoidingView
       style={shared.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
+      keyboardVerticalOffset={headerHeight}
     >
       {/* Add by email */}
       <View style={styles.addSection}>
@@ -169,6 +174,10 @@ export default function ShareScreen() {
             renderItem={({ item, index }) => {
               const profile = item.profiles;
               const isPending = item.status === 'pending';
+              // Pending invites show the address that was typed rather than the
+              // invitee's profile, so this keeps working once the server stops
+              // revealing pending invitees' profiles (security_fixes_5.sql).
+              const pendingEmail = item.invited_email ?? profile?.email;
               const showAcceptedHeader =
                 index === pendingShares.length && acceptedShares.length > 0;
 
@@ -183,7 +192,7 @@ export default function ShareScreen() {
                     <View style={styles.shareInfo}>
                       <View style={styles.nameRow}>
                         <Text style={styles.shareName}>
-                          {profile?.display_name ?? '—'}
+                          {isPending ? pendingEmail : (profile?.display_name ?? '—')}
                         </Text>
                         {isPending && (
                           <View style={styles.pendingBadge}>
@@ -191,7 +200,7 @@ export default function ShareScreen() {
                           </View>
                         )}
                       </View>
-                      <Text style={styles.shareEmail}>{profile?.email}</Text>
+                      {!isPending && <Text style={styles.shareEmail}>{profile?.email}</Text>}
                     </View>
                     <TouchableOpacity
                       onPress={() => handleRemove(item)}
@@ -237,7 +246,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 16,
+    ...text.input,
     color: colors.textPrimary,
   },
   addButton: {
@@ -248,9 +257,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addButtonText: {
+    ...text.bodyStrong,
     color: colors.surface,
-    fontSize: 15,
-    fontWeight: '600',
   },
   shareRow: {
     backgroundColor: colors.surface,
@@ -279,8 +287,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   shareName: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...text.bodyStrong,
     color: colors.textPrimary,
   },
   pendingBadge: {
@@ -290,21 +297,19 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   pendingBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...text.badge,
     color: colors.pendingText,
   },
   shareEmail: {
-    fontSize: 13,
+    ...text.caption,
     color: colors.textSecondary,
   },
   removeText: {
-    fontSize: 14,
+    ...text.smallMedium,
     color: colors.destructive,
-    fontWeight: '500',
   },
   emptyText: {
-    fontSize: 14,
+    ...text.small,
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 8,

@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  ScrollView,
-  Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '@/lib/supabase';
+import { Text, TextInput } from '@/components/ui/text';
+import { MAX_FONT_SCALE_TIGHT } from '@/constants/typography';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
@@ -76,59 +74,61 @@ export default function AddCarScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
+    // bottomOffset leaves room under the focused field so the Add Vehicle
+    // button below the plate input stays above the keyboard.
+    <KeyboardAwareScrollView
       style={shared.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      contentContainerStyle={styles.inner}
+      keyboardShouldPersistTaps="handled"
+      bottomOffset={100}
     >
-      <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
-        <Text style={shared.label}>{t('addCar.icon')}</Text>
-        <View style={[shared.emojiGrid, styles.emojiGridSpacing]}>
-          {VEHICLE_EMOJIS.map(e => (
-            <TouchableOpacity
-              key={e}
-              style={[shared.emojiButton, emoji === e && shared.emojiButtonSelected]}
-              onPress={() => setEmoji(e)}
-            >
-              <Text style={shared.emojiChar}>{e}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <Text style={shared.label}>{t('addCar.icon')}</Text>
+      <View style={[shared.emojiGrid, styles.emojiGridSpacing]}>
+        {VEHICLE_EMOJIS.map(e => (
+          <TouchableOpacity
+            key={e}
+            style={[shared.emojiButton, emoji === e && shared.emojiButtonSelected]}
+            onPress={() => setEmoji(e)}
+          >
+            <Text style={shared.emojiChar} maxFontSizeMultiplier={MAX_FONT_SCALE_TIGHT}>{e}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        <Text style={shared.label}>{t('addCar.vehicleName')}</Text>
-        <TextInput
-          style={[shared.input, styles.inputSpacing]}
-          placeholder={t('addCar.vehicleNamePlaceholder')}
-          placeholderTextColor={colors.textMuted}
-          value={name}
-          onChangeText={setName}
-          autoFocus
-          returnKeyType="next"
-        />
+      <Text style={shared.label}>{t('addCar.vehicleName')}</Text>
+      <TextInput
+        style={[shared.input, styles.inputSpacing]}
+        placeholder={t('addCar.vehicleNamePlaceholder')}
+        placeholderTextColor={colors.textMuted}
+        value={name}
+        onChangeText={setName}
+        autoFocus
+        returnKeyType="next"
+      />
 
-        <Text style={shared.label}>{t('addCar.licensePlate')}</Text>
-        <TextInput
-          style={[shared.input, styles.inputSpacing]}
-          placeholder={t('addCar.licensePlatePlaceholder')}
-          placeholderTextColor={colors.textMuted}
-          value={licensePlate}
-          onChangeText={setLicensePlate}
-          autoCapitalize="characters"
-          returnKeyType="done"
-          onSubmitEditing={handleAdd}
-        />
+      <Text style={shared.label}>{t('addCar.licensePlate')}</Text>
+      <TextInput
+        style={[shared.input, styles.inputSpacing]}
+        placeholder={t('addCar.licensePlatePlaceholder')}
+        placeholderTextColor={colors.textMuted}
+        value={licensePlate}
+        onChangeText={setLicensePlate}
+        autoCapitalize="characters"
+        returnKeyType="done"
+        onSubmitEditing={handleAdd}
+      />
 
-        <TouchableOpacity
-          style={[shared.button, loading && shared.buttonDisabled]}
-          onPress={handleAdd}
-          disabled={loading}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={shared.buttonText}>{t('addCar.addVehicle')}</Text>
-          }
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <TouchableOpacity
+        style={[shared.button, loading && shared.buttonDisabled]}
+        onPress={handleAdd}
+        disabled={loading}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={shared.buttonText}>{t('addCar.addVehicle')}</Text>
+        }
+      </TouchableOpacity>
+    </KeyboardAwareScrollView>
   );
 }
 

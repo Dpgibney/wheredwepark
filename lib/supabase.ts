@@ -17,6 +17,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false, // must be false for React Native
+    // Email links (password reset, sign-up confirmation) come back with a
+    // one-time ?code= that only this install can redeem, instead of session
+    // tokens in the URL. See handleUrl in app/_layout.tsx.
+    flowType: 'pkce',
   },
 });
 
@@ -39,14 +43,24 @@ export interface Database {
         Update: { name?: string; license_plate?: string | null; emoji?: string | null };
       };
       car_shares: {
-        Row: { id: string; car_id: string; shared_with_user_id: string; status: 'pending' | 'accepted'; created_at: string };
-        Insert: { car_id: string; shared_with_user_id: string; status?: 'pending' | 'accepted' };
+        Row: { id: string; car_id: string; shared_with_user_id: string; status: 'pending' | 'accepted'; invited_email: string | null; created_at: string };
+        Insert: { car_id: string; shared_with_user_id: string; status?: 'pending' | 'accepted'; invited_email?: string | null };
         Update: { status?: 'pending' | 'accepted' };
       };
       parking_locations: {
         Row: { id: string; car_id: string; latitude: number; longitude: number; updated_by_user_id: string; updated_at: string; notes: string | null; image_path: string | null };
         Insert: { car_id: string; latitude: number; longitude: number; updated_by_user_id: string; notes?: string | null; image_path?: string | null };
         Update: { latitude?: number; longitude?: number; updated_by_user_id?: string; updated_at?: string; notes?: string | null; image_path?: string | null };
+      };
+      car_notification_prefs: {
+        Row: { user_id: string; car_id: string; notify_on_park: boolean };
+        Insert: { user_id: string; car_id: string; notify_on_park?: boolean };
+        Update: { notify_on_park?: boolean };
+      };
+      app_min_versions: {
+        Row: { platform: 'ios' | 'android'; min_build: number; store_url: string | null; updated_at: string };
+        Insert: never;
+        Update: never;
       };
     };
   };

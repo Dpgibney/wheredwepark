@@ -51,7 +51,9 @@
     "displayNamePlaceholder": "Your name",
     "updateName": "Update Name",
     "contactUs": "Contact Us / Report a Problem",
-    "deleteAccount": "Delete Account"
+    "deleteAccount": "Delete Account",
+    "siriShortcut": "Auto-park with Siri",
+    "about": "About"
   },
   "deleteAccount": {
     "title": "Delete Account",
@@ -96,7 +98,7 @@
     "sendButton": "Send Reset Email",
     "backToLogin": "Back to Sign In",
     "successTitle": "Check your inbox",
-    "successMessage": "If an account exists for that email, a password reset link has been sent.",
+    "successMessage": "If an account exists for that email, a password reset link has been sent. Open the link on this phone.",
     "missingEmail": "Please enter your email address.",
     "errorTitle": "Request Failed"
   },
@@ -202,7 +204,11 @@
     "deleteVehicle": "Delete Vehicle",
     "removeVehicle": "Remove Vehicle",
     "removeVehicleConfirm": "Remove \"{{name}}\" from your Vehicles?",
-    "remove": "Remove"
+    "remove": "Remove",
+    "notifyOnPark": "Notify me when this car is parked",
+    "notificationsOffTitle": "Notifications are off",
+    "notificationsOffMessage": "To get parking alerts, allow notifications for Where'd We Park in your phone's Settings.",
+    "openSettings": "Open Settings"
   },
   "share": {
     "sendInvite": "Send Invite",
@@ -231,6 +237,36 @@
     "forgotPassword": "Reset Password",
     "resetPassword": "Set New Password",
     "linkInvalidTitle": "Link Invalid or Expired",
-    "linkExpiredMessage": "This link has already been used or has expired. Please sign in or request a new one."
+    "linkExpiredMessage": "This link has already been used or has expired. Please sign in or request a new one.",
+    "about": "About",
+    "siriShortcut": "Auto-park with Siri",
+    "linkOutdatedMessage": "This link was sent by an older version of the app. Please request a new one."
+  },
+  "updateRequired": {
+    "title": "Update required",
+    "message": "This version of Where'd We Park is no longer supported. Please update to the latest version to keep using the app.",
+    "button": "Update now"
+  },
+  "about": {
+    "appName": "Where'd We Park",
+    "version": "Version {{version}} (build {{build}})",
+    "creditsTitle": "Credits",
+    "artworkCredit": "All of the app's artwork and the app icon were created by DoodlesByRay.",
+    "visitShop": "Visit DoodlesByRay on Etsy"
+  },
+  "siri": {
+    "intro": "Save your parking spot without opening the app: ask Siri, or have your iPhone do it automatically when you leave your car.",
+    "askTitle": "Ask Siri",
+    "askBody": "Say \"Park my car with {{app}}\". If you have more than one vehicle, Siri asks which one to park.",
+    "automationTitle": "Park automatically when you leave your car",
+    "step1": "Open the Shortcuts app and tap Automation.",
+    "step2": "Tap + and choose when to park: CarPlay (Disconnects), Bluetooth (pick your car, then Is Disconnected), or NFC (scan a tag you keep in your car).",
+    "step3": "Choose Run Immediately, then tap Next. On older versions of iOS, turn off Ask Before Running instead.",
+    "step4": "Tap New Blank Automation, then Add Action. Search for \"Park My Car\" and choose it under {{app}}.",
+    "step5": "Tap Car in the action, pick the vehicle to park, then tap Done.",
+    "tipsTitle": "Good to know",
+    "tipOpenApp": "Open the app once after signing in or adding a vehicle, so the shortcut knows your vehicles.",
+    "tipPermissions": "Allow location access with Precise Location on, and allow notifications so you get a confirmation each time.",
+    "tipLocked": "It works while your phone is locked. If a spot can't be saved, you'll get a notification saying why."
   }
 }

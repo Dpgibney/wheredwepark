@@ -1,19 +1,35 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Linking, StyleSheet, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import { Session } from '@supabase/supabase-js';
 import { useTranslation } from 'react-i18next';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { parkBridge } from '@/lib/parkBridge';
+import { checkAppVersion, VersionStatus } from '@/lib/app-version';
+import { clearSignInFromPreviousInstall } from '@/lib/install-marker';
+import { registerForPushNotifications, routeForNotification, stopPushOnThisDevice } from '@/lib/notifications';
+import { UpdateRequired } from '@/components/update-required';
+import { colors } from '@/constants/colors';
+import { stackScreenOptions } from '@/constants/navigation';
 import '@/lib/i18n';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [version, setVersion] = useState<VersionStatus>({ updateRequired: false });
   const router = useRouter();
   const segments = useSegments();
   const { t } = useTranslation();
+  const lastNotificationResponse = Notifications.useLastNotificationResponse();
+  const handledNotificationId = useRef<string | null>(null);
+  // A link can be handled before the navigator mounts (cold start from an
+  // email link); hold its navigation until loading finishes.
+  const loadingRef = useRef(true);
+  loadingRef.current = loading;
+  const pendingRoute = useRef<string | null>(null);
 
   useEffect(() => {
     // Give the native Park Car App Intent the Supabase config + notification
@@ -22,6 +38,11 @@ export default function RootLayout() {
     parkBridge.requestNotifications();
 
     async function init() {
+      // Must run before anything restores a session: on iOS the keychain
+      // survives an uninstall, and a reinstall shouldn't sign the previous
+      // user back in.
+      await clearSignInFromPreviousInstall();
+
       // The background intent rotates the refresh token when it parks while the app
       // is closed. Adopt its latest tokens BEFORE getSession() so the JS client
       // doesn't refresh with a now-stale token (which would log the user out).
@@ -43,10 +64,14 @@ export default function RootLayout() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
-      // Keep the background App Intent's copy of the session current.
       if (event === 'SIGNED_OUT') {
+        // Drop everything this device keeps for the signed-out account: the
+        // Shortcut's session and car list, and its push registration.
         parkBridge.clearAuth();
+        parkBridge.syncCars([]);
+        stopPushOnThisDevice();
       } else {
+        // Keep the background App Intent's copy of the session current.
         parkBridge.syncAuth(session);
       }
     });
@@ -54,52 +79,105 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Handle Supabase auth deep links. Tokens arrive in the URL hash
-  // (#access_token=...&type=recovery|signup|magiclink|invite); errors from
-  // already-used or expired links arrive as query params (?error=...).
+  // Link this device's push token to whoever is signed in.
+  const userId = session?.user.id;
   useEffect(() => {
-    function handleUrl(url: string | null) {
+    if (userId) registerForPushNotifications();
+  }, [userId]);
+
+  // Block builds older than the server's minimum (lib/app-version.ts). Re-check
+  // on return to the foreground so a raised minimum applies without a relaunch.
+  useEffect(() => {
+    const refresh = () => {
+      checkAppVersion().then(setVersion).catch(() => {});
+    };
+    refresh();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && pendingRoute.current) {
+      router.replace(pendingRoute.current as any);
+      pendingRoute.current = null;
+    }
+  }, [loading, router]);
+
+  // Handle Supabase auth email links (password reset, sign-up confirmation).
+  // With the PKCE flow they arrive as ?code=..., redeemable only with the code
+  // verifier this install saved when it requested the email. A link made on
+  // another device, or crafted by someone else, can't sign this phone in.
+  useEffect(() => {
+    function navigate(route: string) {
+      if (loadingRef.current) {
+        pendingRoute.current = route;
+      } else {
+        router.replace(route as any);
+      }
+    }
+
+    async function handleUrl(url: string | null) {
       if (!url) return;
 
       const [beforeHash, hashPart] = url.split('#');
       const queryPart = beforeHash.includes('?') ? beforeHash.split('?')[1] : '';
-      const hashParams = hashPart ? new URLSearchParams(hashPart) : null;
-      const queryParams = queryPart ? new URLSearchParams(queryPart) : null;
+      const query = new URLSearchParams(queryPart);
+      const hash = new URLSearchParams(hashPart ?? '');
 
-      const errorCode =
-        hashParams?.get('error_code') ?? queryParams?.get('error_code');
-      const errorDescription =
-        hashParams?.get('error_description') ?? queryParams?.get('error_description');
-      if (errorCode || errorDescription) {
-        const message = errorDescription
-          ? decodeURIComponent(errorDescription.replace(/\+/g, ' '))
-          : t('layout.linkExpiredMessage');
-        Alert.alert(t('layout.linkInvalidTitle'), message);
+      // Already-used or expired links come back with ?error=. Show our own
+      // message, never the error text from the URL, which anyone can write.
+      if (query.has('error') || query.has('error_code') || hash.has('error') || hash.has('error_code')) {
+        Alert.alert(t('layout.linkInvalidTitle'), t('layout.linkExpiredMessage'));
         return;
       }
 
-      if (!hashParams) return;
-      const type = hashParams.get('type');
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      if (!accessToken || !refreshToken) return;
+      // Session tokens in a URL come from links emailed to older app versions,
+      // or from someone trying to sign this phone into their own account.
+      // Never adopt them.
+      if (hash.has('access_token') || hash.has('refresh_token')) {
+        Alert.alert(t('layout.linkInvalidTitle'), t('layout.linkOutdatedMessage'));
+        return;
+      }
 
-      supabase.auth
-        .setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ error }) => {
-          if (error) return;
-          if (type === 'recovery') {
-            router.replace('/reset-password' as any);
-          }
-          // signup/magiclink/invite: onAuthStateChange picks up the new session
-          // and the routing effect below sends the user to /(tabs).
-        });
+      const code = query.get('code');
+      if (!code) return;
+
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        Alert.alert(t('layout.linkInvalidTitle'), t('layout.linkExpiredMessage'));
+        // Don't leave someone on the reset-password screen without a session.
+        const { data: { session } } = await supabase.auth.getSession();
+        navigate(session ? '/(tabs)' : '/(auth)/login');
+        return;
+      }
+      // auth-js returns redirectType at runtime (it's saved with the code
+      // verifier when this install requested a reset) but leaves it off the type.
+      const { redirectType } = data as typeof data & { redirectType?: string | null };
+      if (redirectType === 'PASSWORD_RECOVERY') {
+        navigate('/reset-password');
+      }
+      // Sign-up confirmation: onAuthStateChange picks up the new session and
+      // the routing effect below sends the user to /(tabs).
     }
 
     Linking.getInitialURL().then(handleUrl);
     const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
     return () => sub.remove();
   }, []);
+
+  // Open the screen a tapped notification points to, including a tap that
+  // launched the app. Waits for the session so the auth redirect doesn't win.
+  useEffect(() => {
+    if (loading || !session || !lastNotificationResponse) return;
+    if (lastNotificationResponse.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+    const id = lastNotificationResponse.notification.request.identifier;
+    if (handledNotificationId.current === id) return;
+    handledNotificationId.current = id;
+    const path = routeForNotification(lastNotificationResponse);
+    if (path) router.push(path as any);
+  }, [loading, session, lastNotificationResponse, router]);
 
   useEffect(() => {
     if (loading) return;
@@ -120,22 +198,21 @@ export default function RootLayout() {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.brand} />
         <StatusBar style="dark" />
       </View>
     );
   }
 
   return (
-    <>
-      <Stack screenOptions={{ headerShown: false }}>
+    <KeyboardProvider>
+      <Stack screenOptions={{ ...stackScreenOptions, headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="reset-password"
           options={{
             headerShown: true,
-            headerTintColor: '#2563EB',
             title: t('layout.resetPassword'),
             headerBackVisible: false,
           }}
@@ -146,14 +223,12 @@ export default function RootLayout() {
             presentation: 'modal',
             headerShown: true,
             title: t('layout.addVehicle'),
-            headerTintColor: '#2563EB',
           }}
         />
         <Stack.Screen
           name="car/[id]"
           options={{
             headerShown: true,
-            headerTintColor: '#2563EB',
             title: '',
             headerBackTitle: t('layout.vehicles'),
           }}
@@ -162,12 +237,31 @@ export default function RootLayout() {
           name="car/[id]/share"
           options={{
             headerShown: true,
-            headerTintColor: '#2563EB',
             title: t('layout.manageSharing'),
           }}
         />
+        <Stack.Screen
+          name="about"
+          options={{
+            headerShown: true,
+            title: t('layout.about'),
+          }}
+        />
+        <Stack.Screen
+          name="siri-shortcut"
+          options={{
+            headerShown: true,
+            title: t('layout.siriShortcut'),
+          }}
+        />
       </Stack>
+      {/* Overlay rather than replace the navigator, so routing keeps working. */}
+      {version.updateRequired && (
+        <View style={StyleSheet.absoluteFill}>
+          <UpdateRequired storeUrl={version.storeUrl} />
+        </View>
+      )}
       <StatusBar style="dark" />
-    </>
+    </KeyboardProvider>
   );
 }

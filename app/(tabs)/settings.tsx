@@ -1,11 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, type ReactNode } from 'react';
 import {
   View,
-  Text,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Modal,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   Alert,
@@ -13,16 +12,35 @@ import {
   Animated,
   Linking,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { adPrivacyOptionsRequired, showAdPrivacyOptions } from '@/lib/ads';
+import { unregisterPushToken } from '@/lib/notifications';
+import { Text, TextInput } from '@/components/ui/text';
+import { useScaledSize } from '@/hooks/use-scaled-size';
+import { MAX_FONT_SCALE_TIGHT, text } from '@/constants/typography';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
 type ActiveSheet = 'password' | 'name' | 'deleteAccount' | 'contact' | null;
 
+// Bottom sheet that scrolls once the keyboard leaves too little room for it
+// (e.g. the contact form on a small phone or with large text).
+function Sheet({ slideAnim, children }: { slideAnim: Animated.Value; children: ReactNode }) {
+  return (
+    <Animated.View style={[shared.editSheet, styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetContent}>
+        {children}
+      </ScrollView>
+    </Animated.View>
+  );
+}
+
 export default function SettingsScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const avatarSize = useScaledSize(64);
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -121,6 +139,12 @@ export default function SettingsScreen() {
       Alert.alert(t('settings.success'), t('settings.passwordUpdated'));
       closeSheet();
     }
+  }
+
+  async function handleSignOut() {
+    // Unlink this phone from push first; the server call needs the session.
+    await unregisterPushToken();
+    await supabase.auth.signOut();
   }
 
   async function handleChangeName() {
@@ -227,11 +251,11 @@ export default function SettingsScreen() {
   const deleteAccountDisabled = deletingAccount || !emailMatches;
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Profile info */}
       <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
+        <View style={[styles.avatar, { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 }]}>
+          <Text style={styles.avatarText} maxFontSizeMultiplier={MAX_FONT_SCALE_TIGHT}>
             {(displayName ?? email ?? '?')[0].toUpperCase()}
           </Text>
         </View>
@@ -249,6 +273,14 @@ export default function SettingsScreen() {
           <Text style={styles.rowButtonText}>{t('settings.changePassword')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
+        {Platform.OS === 'ios' && (
+          <>
+            <TouchableOpacity style={styles.rowButton} onPress={() => router.push('/siri-shortcut' as any)}>
+              <Text style={styles.rowButtonText}>{t('settings.siriShortcut')}</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
+          </>
+        )}
         <TouchableOpacity
           style={styles.rowButton}
           onPress={() => Linking.openURL('https://dpgibney.github.io/wheredwepark/privacy.html')}
@@ -271,7 +303,11 @@ export default function SettingsScreen() {
           <Text style={styles.rowButtonText}>{t('settings.contactUs')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
-        <TouchableOpacity style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
+        <TouchableOpacity style={styles.rowButton} onPress={() => router.push('/about' as any)}>
+          <Text style={styles.rowButtonText}>{t('settings.about')}</Text>
+        </TouchableOpacity>
+        <View style={styles.divider} />
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <Text style={styles.signOutText}>{t('settings.signOut')}</Text>
         </TouchableOpacity>
         <View style={styles.divider} />
@@ -289,7 +325,7 @@ export default function SettingsScreen() {
           <TouchableOpacity style={StyleSheet.absoluteFill} onPress={closeSheet} />
 
           {activeSheet === 'password' && (
-            <Animated.View style={[shared.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+            <Sheet slideAnim={slideAnim}>
               <Text style={shared.editTitle}>{t('settings.changePassword')}</Text>
 
               <Text style={shared.editLabel}>{t('settings.currentPassword')}</Text>
@@ -337,11 +373,11 @@ export default function SettingsScreen() {
               <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
                 <Text style={styles.cancelLinkText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-            </Animated.View>
+            </Sheet>
           )}
 
           {activeSheet === 'name' && (
-            <Animated.View style={[shared.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+            <Sheet slideAnim={slideAnim}>
               <Text style={shared.editTitle}>{t('settings.changeName')}</Text>
 
               <Text style={shared.editLabel}>{t('settings.displayName')}</Text>
@@ -369,11 +405,11 @@ export default function SettingsScreen() {
               <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
                 <Text style={styles.cancelLinkText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-            </Animated.View>
+            </Sheet>
           )}
 
           {activeSheet === 'deleteAccount' && (
-            <Animated.View style={[shared.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+            <Sheet slideAnim={slideAnim}>
               <Text style={shared.editTitle}>{t('deleteAccount.title')}</Text>
 
               <Text style={styles.deleteWarning}>{t('deleteAccount.warning')}</Text>
@@ -409,11 +445,11 @@ export default function SettingsScreen() {
               <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
                 <Text style={styles.cancelLinkText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-            </Animated.View>
+            </Sheet>
           )}
 
           {activeSheet === 'contact' && (
-            <Animated.View style={[shared.editSheet, { transform: [{ translateY: slideAnim }] }]}>
+            <Sheet slideAnim={slideAnim}>
               <Text style={shared.editTitle}>{t('contact.title')}</Text>
 
               <Text style={shared.editLabel}>{t('contact.subjectLabel')}</Text>
@@ -462,11 +498,11 @@ export default function SettingsScreen() {
               <TouchableOpacity onPress={closeSheet} style={styles.cancelLink}>
                 <Text style={styles.cancelLinkText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-            </Animated.View>
+            </Sheet>
           )}
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -474,7 +510,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  content: {
     padding: 24,
+  },
+  sheet: {
+    maxHeight: '100%',
+  },
+  sheetContent: {
+    gap: 8,
   },
   profileCard: {
     backgroundColor: colors.surface,
@@ -490,26 +534,21 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
     backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   avatarText: {
+    ...text.avatar,
     color: colors.surface,
-    fontSize: 26,
-    fontWeight: '700',
   },
   displayName: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...text.sectionTitle,
     color: colors.textPrimary,
   },
   email: {
-    fontSize: 14,
+    ...text.small,
     color: colors.textSecondary,
   },
   section: {
@@ -527,8 +566,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...text.bodyLargeStrong,
     color: colors.textPrimary,
   },
   divider: {
@@ -540,8 +578,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signOutText: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...text.bodyLargeStrong,
     color: colors.destructive,
   },
   cancelLink: {
@@ -549,11 +586,11 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   cancelLinkText: {
-    fontSize: 14,
+    ...text.small,
     color: colors.textSecondary,
   },
   deleteWarning: {
-    fontSize: 14,
+    ...text.small,
     color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: 12,

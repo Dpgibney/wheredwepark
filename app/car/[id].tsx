@@ -1,26 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   View,
-  Text,
   Image,
   Modal,
   TouchableOpacity,
-  TextInput,
   StyleSheet,
   Alert,
   ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Linking,
+  Switch,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
+import { useHeaderHeight } from '@react-navigation/elements';
+// Keyboard-controller's version for the card under the map; the edit Modal
+// keeps React Native's, which behaves correctly inside a Modal window.
+import { KeyboardAvoidingView as KCKeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { supabase } from '@/lib/supabase';
 import { upsertParkingLocation } from '@/lib/parking';
+import { registerForPushNotifications } from '@/lib/notifications';
+import { Text, TextInput } from '@/components/ui/text';
+import { HeaderTextButton } from '@/components/ui/header-button';
+import { MAX_FONT_SCALE_TIGHT, text } from '@/constants/typography';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
@@ -67,8 +75,11 @@ export default function CarDetailScreen() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [pickingLocation, setPickingLocation] = useState(false);
   const [pickedCoord, setPickedCoord] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [notifyOnPark, setNotifyOnPark] = useState(false);
   const savedNoteRef = useRef('');
   const noteTextRef = useRef('');
+  const noteFocusedRef = useRef(false);
+  const headerHeight = useHeaderHeight();
   const scrollViewRef = useRef<ScrollView>(null);
   const mapRef = useRef<MapView>(null);
 
@@ -76,7 +87,17 @@ export default function CarDetailScreen() {
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
     fetchCar();
     fetchUserLocation();
+    fetchNotifyPref();
   }, [id]);
+
+  // The note's onFocus scroll runs while the keyboard (and the card lifting
+  // above it) is still animating; scroll again once it has settled.
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      if (noteFocusedRef.current) scrollViewRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => sub.remove();
+  }, []);
 
   // Keep ref in sync so the unmount handler always sees the latest value
   noteTextRef.current = noteText;
@@ -129,6 +150,36 @@ export default function CarDetailScreen() {
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
     });
+  }
+
+  async function fetchNotifyPref() {
+    const { data } = await supabase
+      .from('car_notification_prefs')
+      .select('notify_on_park')
+      .eq('car_id', id)
+      .maybeSingle();
+    setNotifyOnPark(data?.notify_on_park ?? false);
+  }
+
+  async function handleToggleNotifyOnPark(value: boolean) {
+    if (!userId) return;
+    setNotifyOnPark(value);
+    // Turning it on needs notification permission and this phone registered for push.
+    if (value && !(await registerForPushNotifications())) {
+      setNotifyOnPark(false);
+      Alert.alert(t('carDetail.notificationsOffTitle'), t('carDetail.notificationsOffMessage'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('carDetail.openSettings'), onPress: () => Linking.openSettings() },
+      ]);
+      return;
+    }
+    const { error } = await supabase
+      .from('car_notification_prefs')
+      .upsert({ user_id: userId, car_id: id, notify_on_park: value }, { onConflict: 'user_id,car_id' });
+    if (error) {
+      setNotifyOnPark(!value);
+      Alert.alert(t('common.error'), error.message);
+    }
   }
 
   async function fetchCar() {
@@ -516,9 +567,7 @@ export default function CarDetailScreen() {
         options={{
           title: car.name,
           headerRight: isOwner ? () => (
-            <TouchableOpacity onPress={openEditModal}>
-              <Text style={{ color: colors.brand, fontSize: 22, fontWeight: '400' }}>{t('carDetail.edit')}</Text>
-            </TouchableOpacity>
+            <HeaderTextButton label={t('carDetail.edit')} onPress={openEditModal} />
           ) : undefined,
         }}
       />
@@ -569,8 +618,16 @@ export default function CarDetailScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.bottomCard}>
-        <ScrollView ref={scrollViewRef} style={styles.cardScroll} contentContainerStyle={styles.cardContent}>
+      // The card is measured from below the header, so without the header's
+      // height as offset it stops short and the keyboard covers the buttons.
+      // When space is tight the ScrollView shrinks so the buttons stay visible.
+      <KCKeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} style={styles.bottomCard}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.cardScroll}
+          contentContainerStyle={styles.cardContent}
+          keyboardShouldPersistTaps="handled"
+        >
           {car.license_plate && (
             <Text style={styles.plate}>{t('carDetail.licensePlate', { plate: car.license_plate })}</Text>
           )}
@@ -593,6 +650,16 @@ export default function CarDetailScreen() {
           ) : (
             <Text style={styles.noLocation}>{t('carDetail.noLocationSaved')}</Text>
           )}
+
+          <View style={styles.notifyRow}>
+            <Text style={styles.notifyLabel}>{t('carDetail.notifyOnPark')}</Text>
+            <Switch
+              value={notifyOnPark}
+              onValueChange={handleToggleNotifyOnPark}
+              trackColor={{ true: colors.brand }}
+              accessibilityLabel={t('carDetail.notifyOnPark')}
+            />
+          </View>
 
           {/* Photo + note section — only shown once a location exists */}
           {loc && (
@@ -631,7 +698,13 @@ export default function CarDetailScreen() {
                   style={styles.noteInput}
                   value={noteText}
                   onChangeText={setNoteText}
-                  onFocus={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                  onFocus={() => {
+                    noteFocusedRef.current = true;
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  }}
+                  onBlur={() => {
+                    noteFocusedRef.current = false;
+                  }}
                   placeholder={t('carDetail.notePlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   multiline
@@ -673,7 +746,7 @@ export default function CarDetailScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </KCKeyboardAvoidingView>
       )}
 
       <Modal visible={editModalVisible} transparent animationType="fade">
@@ -693,7 +766,7 @@ export default function CarDetailScreen() {
                     style={[shared.emojiButton, editEmoji === e && shared.emojiButtonSelected]}
                     onPress={() => setEditEmoji(e)}
                   >
-                    <Text style={shared.emojiChar}>{e}</Text>
+                    <Text style={shared.emojiChar} maxFontSizeMultiplier={MAX_FONT_SCALE_TIGHT}>{e}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -768,6 +841,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomCard: {
+    flexShrink: 1,
     backgroundColor: colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -779,6 +853,7 @@ const styles = StyleSheet.create({
   },
   cardScroll: {
     maxHeight: 260,
+    flexShrink: 1,
   },
   cardContent: {
     padding: 24,
@@ -795,15 +870,14 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   pickingHint: {
-    fontSize: 14,
+    ...text.small,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
   },
   plate: {
-    fontSize: 14,
+    ...text.smallMedium,
     color: colors.textSecondary,
-    fontWeight: '500',
     letterSpacing: 0.5,
   },
   locationInfo: {
@@ -825,29 +899,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   directionsButtonText: {
+    ...text.smallStrong,
     color: colors.surface,
-    fontSize: 14,
-    fontWeight: '600',
   },
   locationLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...text.overline,
     color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   locationDate: {
-    fontSize: 15,
+    ...text.bodyMedium,
     color: colors.textPrimary,
-    fontWeight: '500',
   },
   locationBy: {
-    fontSize: 13,
+    ...text.caption,
     color: colors.textSecondary,
   },
   noLocation: {
-    fontSize: 14,
+    ...text.small,
     color: colors.textMuted,
+  },
+  notifyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  notifyLabel: {
+    ...text.body,
+    color: colors.textPrimary,
+    flex: 1,
   },
   photoSection: {
     gap: 8,
@@ -863,9 +943,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   photoButtonText: {
+    ...text.smallMedium,
     color: colors.brand,
-    fontSize: 14,
-    fontWeight: '500',
   },
   addPhotoButton: {
     borderWidth: 1.5,
@@ -876,9 +955,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addPhotoText: {
+    ...text.smallMedium,
     color: colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
   },
   noteRow: {
     position: 'relative',
@@ -890,7 +968,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     paddingRight: 32,
-    fontSize: 14,
+    ...text.small,
     color: colors.textPrimary,
     minHeight: 72,
     textAlignVertical: 'top',
@@ -905,17 +983,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   textActionText: {
+    ...text.bodyMedium,
     color: colors.brand,
-    fontSize: 15,
-    fontWeight: '500',
   },
   leaveText: {
+    ...text.bodyMedium,
     color: colors.destructive,
-    fontSize: 15,
-    fontWeight: '500',
   },
   errorText: {
-    fontSize: 16,
+    ...text.bodyLarge,
     color: colors.textSecondary,
   },
   editBackdropOpaque: {

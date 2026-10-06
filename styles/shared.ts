@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors } from '@/constants/colors';
+import { text } from '@/constants/typography';
 
 export const shared = StyleSheet.create({
   // Containers
@@ -41,9 +42,8 @@ export const shared = StyleSheet.create({
     backgroundColor: colors.destructive,
   },
   buttonText: {
+    ...text.button,
     color: colors.surface,
-    fontSize: 16,
-    fontWeight: '600' as const,
   },
 
   // Text input
@@ -54,15 +54,14 @@ export const shared = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 16,
+    ...text.input,
     color: colors.textPrimary,
     marginBottom: 12,
   },
 
   // Form label (above inputs)
   label: {
-    fontSize: 13,
-    fontWeight: '600' as const,
+    ...text.label,
     color: colors.textSecondary,
     marginBottom: 6,
     marginTop: 4,
@@ -70,14 +69,13 @@ export const shared = StyleSheet.create({
 
   // Auth screen headings
   title: {
-    fontSize: 28,
-    fontWeight: '700' as const,
+    ...text.screenTitle,
     color: colors.textPrimary,
     textAlign: 'center' as const,
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    ...text.bodyLarge,
     color: colors.textSecondary,
     textAlign: 'center' as const,
     marginBottom: 32,
@@ -85,11 +83,8 @@ export const shared = StyleSheet.create({
 
   // Section label (uppercase)
   sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600' as const,
+    ...text.sectionLabel,
     color: colors.textSecondary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
     marginBottom: 10,
   },
 
@@ -99,12 +94,12 @@ export const shared = StyleSheet.create({
     alignItems: 'center' as const,
   },
   linkText: {
+    ...text.body,
     color: colors.textSecondary,
-    fontSize: 15,
   },
   linkTextBold: {
     color: colors.brand,
-    fontWeight: '600' as const,
+    fontWeight: text.bodyStrong.fontWeight,
   },
 
   // Bottom sheet
@@ -121,14 +116,12 @@ export const shared = StyleSheet.create({
     gap: 8,
   },
   editTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
+    ...text.sheetTitle,
     color: colors.textPrimary,
     marginBottom: 8,
   },
   editLabel: {
-    fontSize: 13,
-    fontWeight: '600' as const,
+    ...text.label,
     color: colors.textSecondary,
     marginTop: 4,
   },
@@ -137,7 +130,7 @@ export const shared = StyleSheet.create({
     borderColor: colors.borderLight,
     borderRadius: 10,
     padding: 12,
-    fontSize: 15,
+    ...text.inputCompact,
     color: colors.textPrimary,
   },
 
@@ -161,7 +154,9 @@ export const shared = StyleSheet.create({
     borderColor: colors.brand,
     backgroundColor: colors.brandLight,
   },
+  // Render with maxFontSizeMultiplier={MAX_FONT_SCALE_TIGHT} so the emoji
+  // still fits its fixed 48pt button at large text sizes.
   emojiChar: {
-    fontSize: 24,
+    ...text.emoji,
   },
 });

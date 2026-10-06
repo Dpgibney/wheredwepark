@@ -1,18 +1,16 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '@/lib/supabase';
+import { Text, TextInput } from '@/components/ui/text';
+import { text } from '@/constants/typography';
 import { shared } from '@/styles/shared';
 
 export default function ResetPasswordScreen() {
@@ -50,62 +48,62 @@ export default function ResetPasswordScreen() {
   const disabled = loading || newPassword.length === 0 || confirmPassword.length === 0;
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={shared.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      contentContainerStyle={styles.inner}
+      keyboardShouldPersistTaps="handled"
+      bottomOffset={24}
     >
-      <View style={styles.inner}>
-        <Text style={shared.title}>{t('resetPassword.title')}</Text>
-        <Text style={[shared.subtitle, styles.subtitleNarrow]}>{t('resetPassword.subtitle')}</Text>
+      <Text style={shared.title}>{t('resetPassword.title')}</Text>
+      <Text style={[shared.subtitle, styles.subtitleNarrow]}>{t('resetPassword.subtitle')}</Text>
 
-        <Text style={shared.label}>{t('resetPassword.newPassword')}</Text>
-        <TextInput
-          style={shared.input}
-          placeholder={t('resetPassword.newPasswordPlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-          textContentType="newPassword"
-          autoFocus
-        />
+      <Text style={shared.label}>{t('resetPassword.newPassword')}</Text>
+      <TextInput
+        style={shared.input}
+        placeholder={t('resetPassword.newPasswordPlaceholder')}
+        placeholderTextColor="#9CA3AF"
+        value={newPassword}
+        onChangeText={setNewPassword}
+        secureTextEntry
+        textContentType="newPassword"
+        autoFocus
+      />
 
-        <Text style={shared.label}>{t('resetPassword.confirmPassword')}</Text>
-        <TextInput
-          style={shared.input}
-          placeholder={t('resetPassword.confirmPasswordPlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          textContentType="newPassword"
-          returnKeyType="done"
-          onSubmitEditing={handleSave}
-        />
+      <Text style={shared.label}>{t('resetPassword.confirmPassword')}</Text>
+      <TextInput
+        style={shared.input}
+        placeholder={t('resetPassword.confirmPasswordPlaceholder')}
+        placeholderTextColor="#9CA3AF"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+        textContentType="newPassword"
+        returnKeyType="done"
+        onSubmitEditing={handleSave}
+      />
 
-        <TouchableOpacity
-          style={[shared.button, disabled && shared.buttonDisabled]}
-          onPress={handleSave}
-          disabled={disabled}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={shared.buttonText}>{t('resetPassword.saveButton')}</Text>
-          }
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      <TouchableOpacity
+        style={[shared.button, disabled && shared.buttonDisabled]}
+        onPress={handleSave}
+        disabled={disabled}
+      >
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={shared.buttonText}>{t('resetPassword.saveButton')}</Text>
+        }
+      </TouchableOpacity>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   inner: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
   subtitleNarrow: {
-    fontSize: 15,
+    ...text.body,
     lineHeight: 22,
   },
 });

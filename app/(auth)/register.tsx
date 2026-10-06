@@ -1,18 +1,15 @@
 import { useState } from 'react';
 import {
-  Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { supabase } from '@/lib/supabase';
+import { Text, TextInput } from '@/components/ui/text';
 import { shared } from '@/styles/shared';
 
 export default function RegisterScreen() {
@@ -67,68 +64,65 @@ export default function RegisterScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={shared.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      contentContainerStyle={styles.inner}
+      keyboardShouldPersistTaps="handled"
+      bottomOffset={24}
     >
-      <ScrollView
-        contentContainerStyle={styles.inner}
-        keyboardShouldPersistTaps="handled"
+      <Text style={shared.title}>{t('register.title')}</Text>
+      <Text style={shared.subtitle}>{t('register.subtitle')}</Text>
+
+      <TextInput
+        style={shared.input}
+        placeholder={t('register.displayNamePlaceholder')}
+        placeholderTextColor="#9CA3AF"
+        value={displayName}
+        onChangeText={setDisplayName}
+        autoCapitalize="words"
+        textContentType="name"
+      />
+
+      <TextInput
+        style={shared.input}
+        placeholder={t('register.emailPlaceholder')}
+        placeholderTextColor="#9CA3AF"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+      />
+
+      <TextInput
+        style={shared.input}
+        placeholder={t('register.passwordPlaceholder')}
+        placeholderTextColor="#9CA3AF"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        textContentType="newPassword"
+      />
+
+      <TouchableOpacity
+        style={[shared.button, loading && shared.buttonDisabled]}
+        onPress={handleRegister}
+        disabled={loading}
       >
-        <Text style={shared.title}>{t('register.title')}</Text>
-        <Text style={shared.subtitle}>{t('register.subtitle')}</Text>
+        {loading
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={shared.buttonText}>{t('register.createAccount')}</Text>
+        }
+      </TouchableOpacity>
 
-        <TextInput
-          style={shared.input}
-          placeholder={t('register.displayNamePlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={displayName}
-          onChangeText={setDisplayName}
-          autoCapitalize="words"
-          textContentType="name"
-        />
-
-        <TextInput
-          style={shared.input}
-          placeholder={t('register.emailPlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-        />
-
-        <TextInput
-          style={shared.input}
-          placeholder={t('register.passwordPlaceholder')}
-          placeholderTextColor="#9CA3AF"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          textContentType="newPassword"
-        />
-
-        <TouchableOpacity
-          style={[shared.button, loading && shared.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={shared.buttonText}>{t('register.createAccount')}</Text>
-          }
+      <Link href="/(auth)/login" asChild>
+        <TouchableOpacity style={shared.linkButton}>
+          <Text style={shared.linkText}>
+            {t('register.alreadyHaveAccount')}<Text style={shared.linkTextBold}>{t('register.signIn')}</Text>
+          </Text>
         </TouchableOpacity>
-
-        <Link href="/(auth)/login" asChild>
-          <TouchableOpacity style={shared.linkButton}>
-            <Text style={shared.linkText}>
-              {t('register.alreadyHaveAccount')}<Text style={shared.linkTextBold}>{t('register.signIn')}</Text>
-            </Text>
-          </TouchableOpacity>
-        </Link>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </Link>
+    </KeyboardAwareScrollView>
   );
 }
 

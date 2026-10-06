@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View,
-  Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -16,6 +15,9 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { upsertParkingLocation } from '@/lib/parking';
 import { parkBridge } from '@/lib/parkBridge';
+import { Text } from '@/components/ui/text';
+import { useScaledSize } from '@/hooks/use-scaled-size';
+import { MAX_FONT_SCALE_TIGHT, text } from '@/constants/typography';
 import { shared } from '@/styles/shared';
 import { colors } from '@/constants/colors';
 
@@ -40,7 +42,7 @@ type PendingInvite = {
   cars: {
     name: string;
     emoji: string | null;
-    profiles: { display_name: string | null } | null;
+    profiles: { display_name: string | null; email: string } | null;
   } | null;
 };
 
@@ -53,6 +55,7 @@ export default function HomeScreen() {
   const [savingLocationId, setSavingLocationId] = useState<string | null>(null);
   const router = useRouter();
   const { t } = useTranslation();
+  const quickParkSize = useScaledSize(36);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -68,18 +71,30 @@ export default function HomeScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('cars')
-      .select('id, name, license_plate, owner_id, emoji, parking_locations(latitude, longitude, updated_at)')
-      .order('created_at', { ascending: false });
+    const [{ data, error }, { data: pending }] = await Promise.all([
+      supabase
+        .from('cars')
+        .select('id, name, license_plate, owner_id, emoji, parking_locations(latitude, longitude, updated_at)')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('car_shares')
+        .select('car_id')
+        .eq('shared_with_user_id', user.id)
+        .eq('status', 'pending'),
+    ]);
 
     if (error) {
       Alert.alert(t('common.error'), error.message);
     } else {
-      const fetched = data ?? [];
+      const fetched = (data ?? []) as unknown as Car[];
       setCars(fetched);
-      // Keep the native Park Car App Intent's car picker in sync.
-      parkBridge.syncCars(fetched.map(c => ({ id: c.id, name: c.name })));
+      // Keep the native Park Car App Intent's car picker in sync. Cars from
+      // invites not yet accepted are readable (for the invite card) but can't
+      // be parked, so leave them out of Siri's list.
+      const pendingIds = new Set((pending ?? []).map(p => p.car_id));
+      parkBridge.syncCars(
+        fetched.filter(c => !pendingIds.has(c.id)).map(c => ({ id: c.id, name: c.name }))
+      );
     }
   }
 
@@ -89,11 +104,11 @@ export default function HomeScreen() {
 
     const { data, error } = await supabase
       .from('car_shares')
-      .select('id, car_id, cars(name, emoji, profiles(display_name))')
+      .select('id, car_id, cars(name, emoji, profiles(display_name, email))')
       .eq('shared_with_user_id', user.id)
       .eq('status', 'pending');
 
-    if (!error) setPendingInvites(data ?? []);
+    if (!error) setPendingInvites((data ?? []) as unknown as PendingInvite[]);
   }
 
   useFocusEffect(
@@ -215,6 +230,9 @@ export default function HomeScreen() {
                     {vehicle?.emoji ?? '🚗'} {vehicle?.name ?? 'A vehicle'}
                   </Text>
                   <Text style={styles.inviteSubtitle}>{t('home.sharedBy', { name: ownerName })}</Text>
+                  {/* Anyone can pick any display name; the email is verified,
+                      so show it to make an impersonated invite obvious. */}
+                  {owner?.email && <Text style={styles.inviteEmail}>{owner.email}</Text>}
                   <View style={styles.inviteActions}>
                     <TouchableOpacity
                       style={styles.declineButton}
@@ -272,17 +290,20 @@ export default function HomeScreen() {
             </View>
             <View style={styles.cardRight}>
               <TouchableOpacity
-                style={styles.updateLocationButton}
+                style={[
+                  styles.updateLocationButton,
+                  { width: quickParkSize, height: quickParkSize, borderRadius: quickParkSize / 2 },
+                ]}
                 onPress={() => handleQuickUpdateLocation(item.id)}
                 disabled={savingLocationId === item.id}
               >
                 {savingLocationId === item.id ? (
                   <ActivityIndicator size="small" color={colors.brand} />
                 ) : (
-                  <Text style={styles.updateLocationText}>📍</Text>
+                  <Text style={styles.updateLocationText} maxFontSizeMultiplier={MAX_FONT_SCALE_TIGHT}>📍</Text>
                 )}
               </TouchableOpacity>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={styles.chevron} maxFontSizeMultiplier={MAX_FONT_SCALE_TIGHT}>›</Text>
             </View>
           </TouchableOpacity>
         );
@@ -326,19 +347,21 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   inviteName: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...text.bodyLargeStrong,
     color: colors.textPrimary,
   },
   inviteSubtitle: {
-    fontSize: 13,
+    ...text.caption,
     color: colors.textSecondary,
-    marginBottom: 8,
+  },
+  inviteEmail: {
+    ...text.caption,
+    color: colors.textSecondary,
   },
   inviteActions: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 4,
+    marginTop: 12,
   },
   declineButton: {
     flex: 1,
@@ -350,8 +373,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   declineText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...text.smallMedium,
     color: colors.textSecondary,
   },
   acceptButton: {
@@ -362,8 +384,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   acceptText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...text.smallStrong,
     color: colors.surface,
   },
   empty: {
@@ -373,13 +394,12 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...text.sectionTitle,
     color: colors.textDark,
     marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 15,
+    ...text.body,
     color: colors.textMuted,
     textAlign: 'center',
   },
@@ -393,41 +413,35 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   carName: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...text.cardTitle,
     color: colors.textPrimary,
   },
   plate: {
-    fontSize: 13,
+    ...text.captionMedium,
     color: colors.textSecondary,
-    fontWeight: '500',
     letterSpacing: 0.5,
   },
   parkedText: {
-    fontSize: 13,
+    ...text.caption,
     color: colors.brand,
     marginTop: 4,
   },
   noLocationText: {
-    fontSize: 13,
+    ...text.caption,
     color: colors.textMuted,
     marginTop: 4,
   },
   sharedBadge: {
-    fontSize: 11,
+    ...text.badgeMedium,
     color: colors.purple,
-    fontWeight: '500',
     marginTop: 4,
   },
   chevron: {
-    fontSize: 22,
+    ...text.chevron,
     color: colors.border,
     lineHeight: 26,
   },
   updateLocationButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     backgroundColor: colors.brandLight,
     borderWidth: 1,
     borderColor: colors.brandLightBorder,
@@ -435,6 +449,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   updateLocationText: {
-    fontSize: 16,
+    ...text.emojiSmall,
   },
 });

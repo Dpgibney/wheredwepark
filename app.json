@@ -63,6 +63,13 @@
       ],
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#2563EB"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Used to attach a photo of your parking location or car.",
