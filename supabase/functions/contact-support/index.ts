@@ -2,8 +2,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUBJECT_MAX = 200;
 const MESSAGE_MAX = 5000;
-const RATE_LIMIT = 3; // max submissions per user per hour
-const RATE_WINDOW_MS = 60 * 60 * 1000;
+const CONTACT_EMAIL_MAX = 320; // matches the support_requests.contact_email check
+// Shape check only. Rejecting spaces, angle brackets and list separators keeps
+// reply_to a single bare address (no display name or extra recipients).
+const EMAIL_RE = /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/;
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
@@ -59,26 +61,37 @@ Deno.serve(async (req) => {
   if (subject.length > SUBJECT_MAX || message.length > MESSAGE_MAX) {
     return new Response('subject or message too long', { status: 400 });
   }
+  if (contactEmail.length > CONTACT_EMAIL_MAX || (contactEmail && !EMAIL_RE.test(contactEmail))) {
+    return new Response('invalid contact email', { status: 400 });
+  }
 
   // The service-role client bypasses RLS so it can read/write support_requests,
   // which is otherwise locked to all clients.
   const admin = createClient(supabaseUrl, serviceRoleKey);
 
-  // Rate limit: at most RATE_LIMIT submissions per user per rolling hour. We
-  // count first and only record a row after a successful send (below), so
-  // failed sends don't burn a user's quota. A concurrent burst could slip a few
-  // extra through, which is acceptable for a feedback form.
-  const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
-  const { count, error: countErr } = await admin
+  // Reserve the submission before sending. The enforce_support_rate_limit
+  // trigger (3 per user per rolling hour) counts and inserts under a per-user
+  // advisory lock, so a burst of parallel requests can't all pass the check.
+  // The row is also the durable copy for triage. Any insert failure stops the
+  // send, so nothing goes out uncounted.
+  const { data: reserved, error: insertErr } = await admin
     .from('support_requests')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .gte('created_at', since);
-  if (countErr) {
-    return new Response('rate-limit check failed', { status: 500 });
-  }
-  if ((count ?? 0) >= RATE_LIMIT) {
-    return new Response('rate limit exceeded', { status: 429 });
+    .insert({
+      user_id: user.id,
+      subject,
+      message,
+      contact_email: contactEmail || null,
+      platform,
+    })
+    .select('id')
+    .single();
+  if (insertErr) {
+    // PT429 is the SQLSTATE the trigger raises when the user is over the limit.
+    if (insertErr.code === 'PT429') {
+      return new Response('rate limit exceeded', { status: 429 });
+    }
+    console.error('support_requests insert failed:', insertErr.message);
+    return new Response('could not record request', { status: 500 });
   }
 
   // Metadata is appended server-side so support has trustworthy triage info that
@@ -91,38 +104,41 @@ Deno.serve(async (req) => {
     `Account email: ${user.email ?? 'n/a'}\n` +
     `Platform: ${platform}\n`;
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: [supportEmail],
-      reply_to: contactEmail || undefined,
-      subject: `[Support] ${subject}`,
-      text: body,
-    }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    return new Response(`email send failed: ${detail}`, { status: 502 });
+  let sent = false;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [supportEmail],
+        reply_to: contactEmail || undefined,
+        subject: `[Support] ${subject}`,
+        text: body,
+      }),
+    });
+    sent = res.ok;
+    if (!res.ok) {
+      // Log the provider's reason server-side only; it can reveal account config.
+      console.error('email send failed:', res.status, await res.text().catch(() => ''));
+    }
+  } catch (err) {
+    console.error('email send failed:', err);
   }
 
-  // Record the submission: durable copy for triage and the row the rate limiter
-  // counts. The email already went out, so a failed insert just loses the record
-  // — don't fail the request and risk the user re-sending a duplicate.
-  const { error: insertErr } = await admin.from('support_requests').insert({
-    user_id: user.id,
-    subject,
-    message,
-    contact_email: contactEmail || null,
-    platform,
-  });
-  if (insertErr) {
-    console.error('support_requests insert failed:', insertErr.message);
+  if (!sent) {
+    // Release the reservation so a failed send doesn't burn the user's quota.
+    const { error: releaseErr } = await admin
+      .from('support_requests')
+      .delete()
+      .eq('id', reserved.id);
+    if (releaseErr) {
+      console.error('support_requests release failed:', releaseErr.message);
+    }
+    return new Response('email send failed', { status: 502 });
   }
 
   return new Response('ok', { status: 200 });

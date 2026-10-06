@@ -431,6 +431,31 @@ create table support_requests (
 create index support_requests_user_created_idx
   on support_requests (user_id, created_at desc);
 
+-- Rate limit: 3 submissions per user per rolling hour. contact-support inserts
+-- (reserves) its row before sending the email, and this trigger serializes the
+-- count + insert per user so a burst of parallel requests can't all pass.
+-- PT429: PostgREST maps PT-prefixed SQLSTATEs to that HTTP status, and the
+-- function keys its 429 response off it.
+create or replace function check_support_rate_limit()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  perform pg_advisory_xact_lock(hashtext('support_rate:' || new.user_id::text));
+  if (select count(*) from support_requests
+      where user_id = new.user_id
+        and created_at > now() - interval '1 hour') >= 3 then
+    raise exception 'Support request rate limit exceeded' using errcode = 'PT429';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger enforce_support_rate_limit
+  before insert on support_requests
+  for each row execute procedure check_support_rate_limit();
+
 -- Every read/write goes through the service-role contact-support edge function,
 -- which bypasses RLS. Enabling RLS with NO policies denies all direct client
 -- access, countering the schema-wide `grant all on all tables to authenticated`.
@@ -439,8 +464,9 @@ alter table support_requests enable row level security;
 -- The contact-support edge function reads/writes this table as the service_role,
 -- which the authenticated-only grants above don't cover. Without USAGE on the
 -- schema service_role can't even see the table ("relation does not exist").
+-- DELETE lets it release a reserved row when the email send fails.
 grant usage on schema public to service_role;
-grant select, insert on support_requests to service_role;
+grant select, insert, delete on support_requests to service_role;
 
 -- Purge rows older than 30 days daily at 04:00 UTC. The rate limiter only looks
 -- back 1 hour, so nothing older is needed. Scheduling by name upserts, so this
@@ -472,13 +498,15 @@ create policy "Users with car access can view parking images"
     and user_has_car_access((storage.foldername(name))[1]::uuid));
 
 -- Writes are pinned to the {car_id}/parking.jpg path the app enforces in code,
--- so a shared user can't fill the owner's folder with extra files.
+-- so a shared user can't fill the owner's folder with extra files. The folder
+-- is round-tripped through ::uuid::text because the ::uuid cast alone also
+-- accepts upper-case and re-hyphenated spellings of the same car id.
 -- SELECT/DELETE stay permissive so owners can clean up any pre-existing extras.
 create policy "Users with car access can upload parking images"
   on storage.objects for insert
   with check (bucket_id = 'parking-images'
     and user_has_car_access((storage.foldername(name))[1]::uuid)
-    and name = (storage.foldername(name))[1] || '/parking.jpg');
+    and name = ((storage.foldername(name))[1])::uuid::text || '/parking.jpg');
 
 create policy "Users with car access can update parking images"
   on storage.objects for update
@@ -486,7 +514,7 @@ create policy "Users with car access can update parking images"
     and user_has_car_access((storage.foldername(name))[1]::uuid))
   with check (bucket_id = 'parking-images'
     and user_has_car_access((storage.foldername(name))[1]::uuid)
-    and name = (storage.foldername(name))[1] || '/parking.jpg');
+    and name = ((storage.foldername(name))[1])::uuid::text || '/parking.jpg');
 
 create policy "Users with car access can delete parking images"
   on storage.objects for delete
