@@ -42,12 +42,12 @@ Do not share a vehicle with anyone you do not want to see this information.
 
 ## Notifications
 
-If you allow notifications, the App gets a push token for your device from Apple or Google (through our push provider, Expo), and we store it linked to your account so we can reach that device. We use it to send:
+If you allow notifications, the App gets a push token for your device from Apple or Google (through our push provider, Expo), and we store it linked to your account so we can reach that device, together with a scrambled (hashed) copy of a random code this copy of the App creates, which stops the token being moved to someone else's account. We use it to send:
 
 - a notification when someone invites you to share a vehicle; and
 - for vehicles where you turn it on, a notification when someone else saves a new parking spot for that vehicle.
 
-Notifications show the vehicle's name and the display name of the person involved. They never include the location. You can turn parking notifications on or off for each vehicle in the App, and turn off all notifications in your phone's settings. Signing out removes the link between your account and the device.
+Invitation notifications don't say who sent them or which vehicle it is; you'll see that in the App. Parking notifications show the vehicle's name. Notifications never include the location. You can turn parking notifications on or off for each vehicle in the App, and turn off all notifications in your phone's settings. Signing out removes the link between your account and the device.
 
 ## Advertising
 

@@ -1,3 +1,5 @@
+// Must load before the client: provides crypto.getRandomValues for PKCE.
+import '@/lib/crypto-polyfill';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 

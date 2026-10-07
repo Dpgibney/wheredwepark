@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Sends push notifications through Expo for the webhooks created in
 // supabase/notifications.sql:
-//   car_shares INSERT                 -> "<owner> shared <car> with you"
+//   car_shares INSERT                 -> generic "new vehicle invitation"
 //   parking_locations INSERT / UPDATE -> "<car> was parked" (opt-in, per car)
 // Who gets what, and throttling, are decided in claim_notifications(), so this
 // function needs no table access of its own. Never includes coordinates.
@@ -14,7 +14,7 @@ const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_BATCH_SIZE = 100; // Expo's per-request limit
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-type Claim = { token: string; car_id: string; car_name: string; actor_name: string };
+type Claim = { token: string; car_id: string; car_name: string | null };
 type PushMessage = {
   to: string;
   title: string;
@@ -34,20 +34,26 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+// Anyone can invite any registered email, so invites carry no names or car
+// name: otherwise a stranger could put their own text on someone's lock
+// screen, or pose as someone they trust. The app shows who sent the invite,
+// with their verified email. Parked alerts only reach people who accepted the
+// share and opted in; they name the car (set by its owner), not the parker,
+// whose display name is self-chosen.
 function toMessage(kind: 'invite' | 'parked', claim: Claim): PushMessage {
   return kind === 'invite'
     ? {
         to: claim.token,
-        title: 'New shared vehicle',
-        body: `${claim.actor_name} shared ${claim.car_name} with you.`,
+        title: 'New vehicle invitation',
+        body: 'Someone invited you to share a vehicle. Open the app to see who and to accept or decline.',
         data: { path: '/' },
         sound: 'default',
         channelId: 'default',
       }
     : {
         to: claim.token,
-        title: `${claim.car_name} was parked`,
-        body: `${claim.actor_name} saved a new parking spot.`,
+        title: `${claim.car_name ?? 'A shared vehicle'} was parked`,
+        body: 'A new parking spot was saved. Tap to see where.',
         data: { path: `/car/${claim.car_id}` },
         sound: 'default',
         channelId: 'default',

@@ -1,5 +1,7 @@
 import Constants from 'expo-constants';
+import { getRandomBytes } from 'expo-crypto';
 import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
@@ -18,6 +20,20 @@ Notifications.setNotificationHandler({
 });
 
 let currentToken: string | null = null;
+
+const DEVICE_SECRET_KEY = 'push_device_secret';
+
+// A random value generated once per app install and kept in the keychain.
+// The server stores only its hash with the push token and won't move a token
+// to another account without it, so knowing a device's token isn't enough to
+// take over its notifications (see register_push_token).
+async function getDeviceSecret(): Promise<string> {
+  const existing = await SecureStore.getItemAsync(DEVICE_SECRET_KEY);
+  if (existing) return existing;
+  const secret = Array.from(getRandomBytes(32), (b) => b.toString(16).padStart(2, '0')).join('');
+  await SecureStore.setItemAsync(DEVICE_SECRET_KEY, secret);
+  return secret;
+}
 
 async function getPushToken(): Promise<string | null> {
   const projectId = Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
@@ -49,8 +65,12 @@ export async function registerForPushNotifications(): Promise<boolean> {
 
     const token = await getPushToken();
     if (!token) return false;
-    const { error } = await supabase.rpc('register_push_token', { p_token: token, p_platform: Platform.OS });
-    if (error) return false;
+    const { data: registered, error } = await supabase.rpc('register_push_token', {
+      p_token: token,
+      p_platform: Platform.OS,
+      p_device_secret: await getDeviceSecret(),
+    });
+    if (error || !registered) return false;
     currentToken = token;
     return true;
   } catch {

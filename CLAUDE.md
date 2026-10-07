@@ -80,6 +80,8 @@ This is a development-only build (requires `expo-dev-client`). Run `expo start` 
 - Sends "shared with you" notifications, plus per-car "was parked" notifications (opt-in via `car_notification_prefs`).
 - Database webhooks call the `send-notifications` edge function, which only uses the service-role-only `claim_notifications`/`forget_push_tokens` functions; the service role has no access to the core tables.
 - Never put coordinates in notification text.
+- Never put text another user chose (display names, car names) in a notification to someone who hasn't accepted a share from them. Invite notifications are generic.
+- Push tokens are bound to a per-install secret (`register_push_token`), so a token can't be moved to another account without it.
 
 **Minimum app version:** at launch and on return to the foreground, the app compares its build number with `app_min_versions.min_build` and shows a blocking update screen if it's older (`lib/app-version.ts`).
 
