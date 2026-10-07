@@ -24,9 +24,10 @@ create table if not exists app_min_versions (
   updated_at  timestamptz not null default now()
 );
 
+-- No Android store link: the app isn't on Google Play.
 insert into app_min_versions (platform, min_build, store_url) values
-  ('ios', 0, null),
-  ('android', 0, 'https://play.google.com/store/apps/details?id=com.dgibney.wheredwepark1')
+  ('ios', 0, 'https://apps.apple.com/app/id6761032184'),
+  ('android', 0, null)
 on conflict (platform) do nothing;
 
 -- Readable before sign-in (anon), so a signed-out old build still gets the

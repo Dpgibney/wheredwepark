@@ -1,14 +1,14 @@
 {
   "configVersion": 0,
   "apple": {
-    "version": "1.0",
+    "version": "1.1",
     "release": {
       "automaticRelease": true
     },
     "info": {
       "en-US": {
         "title": "wheredwepark",
-        "releaseNotes": "Added ability to park cars at a different location than where the user currently is"
+        "releaseNotes": "What's new in 1.1:\n• Notifications: get notified when someone shares a vehicle with you, and choose to be notified whenever someone parks a shared vehicle (turn it on for each vehicle).\n• Better support for larger text: the app now follows your iPhone's text size setting.\n• Keyboard fixes: text boxes and buttons no longer get hidden behind the keyboard when you add a vehicle or write a parking note.\n• New guide to parking automatically with Siri and Shortcuts, under Settings → Auto-park with Siri.\n• Invitations now show the sender's email address, so you know who they're from.\n• New About screen, with credit to DoodlesByRay for the app's artwork and icon.\n• Security improvements, including safer password reset links. Open the reset email on the same phone you requested it from."
       }
     },
     "advisory": {
