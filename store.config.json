@@ -2,15 +2,30 @@
   "configVersion": 0,
   "apple": {
     "version": "1.1",
+    "copyright": "2026 Daniel Gibney",
     "release": {
       "automaticRelease": true
     },
     "info": {
       "en-US": {
+        "description": "This app serves as a hub for sharing where you parked with others. Easily see where your vehicle is parked, when it was parked, and who parked it last.\n\nAdd photos and notes such as \"3rd floor of the parking garage, turn left exiting the elevator\" to never lose track of your car again.\n\nPairs with Google Maps and Apple Maps to easily provide directions to your car.\n\nDo you share a bike or a motorcycle? Track the location of multiple vehicles at once.\n\nCompatible with iOS shortcuts to enable actions such as saving your vehicle's location automatically when your phone disconnects from your vehicles Bluetooth!",
+        "keywords": [
+          "Parking",
+          "Location",
+          "Sharing",
+          "Vehicles"
+        ],
+        "promoText": "Never have to send a \"Where'd you park?\" text again! Useful for couples, families, or anyone who shares a car that need to keep each other informed about their locations.",
+        "supportUrl": "https://dpgibney.github.io/wheredwepark/index.html",
         "title": "wheredwepark",
-        "releaseNotes": "What's new in 1.1:\n• Notifications: get notified when someone shares a vehicle with you, and choose to be notified whenever someone parks a shared vehicle (turn it on for each vehicle).\n• Better support for larger text: the app now follows your iPhone's text size setting.\n• Keyboard fixes: text boxes and buttons no longer get hidden behind the keyboard when you add a vehicle or write a parking note.\n• New guide to parking automatically with Siri and Shortcuts, under Settings → Auto-park with Siri.\n• Invitations now show the sender's email address, so you know who they're from.\n• New About screen, with credit to DoodlesByRay for the app's artwork and icon.\n• Security improvements, including safer password reset links. Open the reset email on the same phone you requested it from."
+        "privacyPolicyUrl": "https://dpgibney.github.io/wheredwepark/privacy.html",
+        "releaseNotes": "What's new in 1.1:\n• Notifications: get notified when someone shares a vehicle with you, and choose to be notified whenever someone parks a shared vehicle (turn it on for each vehicle).\n• Better support for larger text: the app now follows your iPhone's text size setting.\n• Keyboard fixes: text boxes and buttons no longer get hidden behind the keyboard when you add a vehicle or write a parking note.\n• New guide to parking automatically with Siri and Shortcuts, under Settings → Auto-park with Siri.\n• Invitations now show the sender's email address, so you know who they're from.\n• New About screen, with credit to DoodlesByRay for the app's artwork and icon.\n• Security improvements, including safer password reset links. Open the reset email on the same phone you requested it from.",
+        "marketingUrl": "https://dpgibney.github.io/wheredwepark/"
       }
     },
+    "categories": [
+      "UTILITIES"
+    ],
     "advisory": {
       "ageRatingOverride": "NONE",
       "alcoholTobaccoOrDrugUseOrReferences": "NONE",
