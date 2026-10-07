@@ -650,13 +650,15 @@ select cron.schedule(
 -- ------------------------------------------------------------
 
 -- Called by the app after sign-in. p_device_secret is a random value the
--- app install generated and keeps in its keychain; only its hash is stored.
--- A token that's already registered can only be moved to another account by
--- the same install, so knowing a device's token isn't enough to take over
--- its notifications. A different person signing in on the same phone is the
--- same install, so handing a phone over still works. The account a token
--- already belongs to may also re-register it from a new install (e.g. a lost
--- secret), so nobody gets locked out of their own device.
+-- app install generated and keeps in its keychain; only its hash is stored,
+-- and it never changes once set. A registered token can only be moved to
+-- another account by the install that registered it, so knowing a device's
+-- token isn't enough to take over its notifications, even with a stolen
+-- session for the account it belongs to. A different person signing in on
+-- the same phone is the same install, so handing a phone over still works.
+-- A token and its secret belong to the same install (a reinstall or new
+-- phone gets a new token), so a legitimate device never needs a new secret
+-- for an old token.
 --
 -- Known limit: whoever registers a token first owns it, so someone who knew
 -- a device's token before that device registered could squat it (the owner
@@ -665,8 +667,8 @@ select cron.schedule(
 -- this fully needs proof of possession (a challenge push the device must
 -- answer).
 --
--- Returns false if the token belongs to another account's install. Keeps
--- each user's 10 most recent devices.
+-- Returns false if the token belongs to another install. Keeps each user's
+-- 10 most recent devices.
 drop function if exists register_push_token(text, text);
 create or replace function register_push_token(p_token text, p_platform text, p_device_secret text)
 returns boolean
@@ -690,10 +692,8 @@ begin
   on conflict (token) do update
     set user_id = excluded.user_id,
         platform = excluded.platform,
-        device_secret_hash = excluded.device_secret_hash,
         updated_at = now()
     where push_tokens.device_secret_hash = excluded.device_secret_hash
-       or push_tokens.user_id = auth.uid()
   returning true into v_registered;
 
   if v_registered is null then
