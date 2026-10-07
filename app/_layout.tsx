@@ -245,6 +245,7 @@ export default function RootLayout() {
           options={{
             headerShown: true,
             title: t('layout.about'),
+            headerBackTitle: t('layout.settings'),
           }}
         />
         <Stack.Screen
@@ -252,6 +253,7 @@ export default function RootLayout() {
           options={{
             headerShown: true,
             title: t('layout.siriShortcut'),
+            headerBackTitle: t('layout.settings'),
           }}
         />
       </Stack>

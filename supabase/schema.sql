@@ -654,8 +654,19 @@ select cron.schedule(
 -- A token that's already registered can only be moved to another account by
 -- the same install, so knowing a device's token isn't enough to take over
 -- its notifications. A different person signing in on the same phone is the
--- same install, so handing a phone over still works. Returns false if the
--- token belongs to another install. Keeps each user's 10 most recent devices.
+-- same install, so handing a phone over still works. The account a token
+-- already belongs to may also re-register it from a new install (e.g. a lost
+-- secret), so nobody gets locked out of their own device.
+--
+-- Known limit: whoever registers a token first owns it, so someone who knew
+-- a device's token before that device registered could squat it (the owner
+-- would then get no pushes; no data is exposed). Tokens never leave the
+-- device except to Expo and this table, which no user can read. Closing
+-- this fully needs proof of possession (a challenge push the device must
+-- answer).
+--
+-- Returns false if the token belongs to another account's install. Keeps
+-- each user's 10 most recent devices.
 drop function if exists register_push_token(text, text);
 create or replace function register_push_token(p_token text, p_platform text, p_device_secret text)
 returns boolean
@@ -679,8 +690,10 @@ begin
   on conflict (token) do update
     set user_id = excluded.user_id,
         platform = excluded.platform,
+        device_secret_hash = excluded.device_secret_hash,
         updated_at = now()
     where push_tokens.device_secret_hash = excluded.device_secret_hash
+       or push_tokens.user_id = auth.uid()
   returning true into v_registered;
 
   if v_registered is null then
@@ -738,6 +751,7 @@ as $$
 #variable_conflict use_column
 declare
   v_window interval;
+  v_recipient uuid;
 begin
   v_window := case p_kind
     when 'invite' then interval '1 hour'
@@ -747,9 +761,20 @@ begin
     raise exception 'unknown notification kind: %', p_kind;
   end if;
 
-  -- One claim at a time per event target, so concurrent webhook calls
-  -- can't both pass the throttle check.
-  perform pg_advisory_xact_lock(hashtext('notify:' || p_kind || ':' || p_ref::text));
+  -- Serialize claims that check the same throttle rows, so concurrent webhook
+  -- calls can't all pass a check before any of them logs. Invites lock on the
+  -- recipient: the daily cap and the per-car throttle count every invite to
+  -- that person, which arrive under different share ids. Parked alerts lock
+  -- on the car, which covers their per-car throttle.
+  if p_kind = 'invite' then
+    select cs.shared_with_user_id into v_recipient from car_shares cs where cs.id = p_ref;
+    if v_recipient is null then
+      return;  -- invite already deleted
+    end if;
+    perform pg_advisory_xact_lock(hashtext('notify:invite-recipient:' || v_recipient::text));
+  else
+    perform pg_advisory_xact_lock(hashtext('notify:parked:' || p_ref::text));
+  end if;
 
   return query
   with candidates as (
