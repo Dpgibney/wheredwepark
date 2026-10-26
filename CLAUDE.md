@@ -29,6 +29,7 @@ There are no automated tests in this project.
 Copy `.env.example` to `.env` and populate:
 - `EXPO_PUBLIC_SUPABASE_URL` — your Supabase project URL
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY` — your Supabase anon/public key
+- `GOOGLE_MAPS_ANDROID_API_KEY` — Google Maps key for the Android map (iOS uses Apple Maps), added by `app.config.js`. EAS builds need it as an EAS environment variable; an Android EAS build fails without it.
 
 This is a development-only build (requires `expo-dev-client`). Run `expo start` then open using the Expo Go app or a development build, not the standard Expo Go client, since native modules (maps, location, secure store) are used.
 

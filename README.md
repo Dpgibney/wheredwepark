@@ -57,7 +57,10 @@ A mobile app for saving where you parked, finding it again, and sharing a vehicl
    ```
    EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   GOOGLE_MAPS_ANDROID_API_KEY=your-android-maps-key-here
    ```
+
+   The Google Maps key is only used on Android (iOS uses Apple Maps). `app.config.js` adds it to the build; EAS builds read it from an EAS environment variable.
 
 3. Start the dev server (then open in a development build):
 
