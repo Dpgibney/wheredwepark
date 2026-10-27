@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, useRef, type ReactNode } from 'react';
 import {
   View,
   ScrollView,
@@ -13,6 +13,7 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { adPrivacyOptionsRequired, showAdPrivacyOptions } from '@/lib/ads';
@@ -72,20 +73,35 @@ export default function SettingsScreen() {
   const [contactEmail, setContactEmail] = useState('');
   const [sendingContact, setSendingContact] = useState(false);
 
+  // Email and id come from the stored session, so no network round trip. They only
+  // change with a new sign-in, which remounts this screen.
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      setEmail(user.email ?? null);
-      setUserId(user.id);
-      supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', user.id)
-        .single()
-        .then(({ data }) => setDisplayName(data?.display_name ?? null));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      setEmail(session.user.email ?? null);
+      setUserId(session.user.id);
     });
     adPrivacyOptionsRequired().then(setShowAdPrivacyRow);
   }, []);
+
+  // The name is fetched once (Change Name updates it locally). If that fetch fails,
+  // e.g. on a dropped connection, it's retried the next time the tab is opened.
+  const nameLoaded = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!userId || nameLoaded.current) return;
+      supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', userId)
+        .single()
+        .then(({ data, error }) => {
+          if (error || nameLoaded.current) return;
+          nameLoaded.current = true;
+          setDisplayName(data?.display_name ?? null);
+        });
+    }, [userId])
+  );
 
   function openSheet(sheet: ActiveSheet) {
     if (sheet === 'name') setNameInput(displayName ?? '');
@@ -162,6 +178,7 @@ export default function SettingsScreen() {
     if (error) {
       Alert.alert(t('common.error'), error.message);
     } else {
+      nameLoaded.current = true;
       setDisplayName(trimmed);
       Alert.alert(t('settings.success'), t('settings.nameUpdated'));
       closeSheet();
